@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { Task } from "@/lib/kanban-store"
 import { useKanbanStore } from "@/lib/kanban-store"
 import { KanbanColumn } from "./kanban-column"
@@ -19,10 +19,18 @@ import {
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable"
 import { KanbanCard } from "./kanban-card"
 
-export function KanbanBoard() {
-  const { columns, moveTask } = useKanbanStore()
+interface KanbanBoardProps {
+  projectId?: string
+}
+
+export function KanbanBoard({ projectId }: KanbanBoardProps) {
+  const { columns, moveTask, fetchTasks, isLoading } = useKanbanStore()
   const [selectedTask, setSelectedTask] = useState<{ task: Task; columnId: string } | null>(null)
   const [activeTask, setActiveTask] = useState<Task | null>(null)
+
+  useEffect(() => {
+    fetchTasks(projectId)
+  }, [projectId, fetchTasks])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -92,6 +100,10 @@ export function KanbanBoard() {
     }
   }
 
+  if (isLoading) {
+    return <div className="flex h-full items-center justify-center text-muted-foreground">Loading tasks...</div>
+  }
+
   return (
     <>
       <DndContext
@@ -100,7 +112,7 @@ export function KanbanBoard() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="flex gap-4 overflow-x-auto pb-4 h-full">
           {columns.map((column) => (
             <KanbanColumn
               key={column.id}
@@ -113,7 +125,7 @@ export function KanbanBoard() {
         <DragOverlay>
           {activeTask && (
             <div className="rotate-3 scale-105">
-              <KanbanCard task={activeTask} onClick={() => {}} />
+              <KanbanCard task={activeTask} onClick={() => { }} />
             </div>
           )}
         </DragOverlay>

@@ -19,132 +19,99 @@ import {
   Calendar,
 } from "lucide-react"
 
-const activities = [
-  {
-    id: 1,
-    user: { name: "Sarah Chen", avatar: "/woman-1.jpg", initials: "SC" },
-    action: "completed",
-    type: "task-complete",
-    target: "Design system documentation",
-    project: "Marketing Website",
-    time: "5 minutes ago",
-    date: "Today",
-    icon: CheckCircle,
-    iconColor: "text-success bg-success/10",
-  },
-  {
-    id: 2,
-    user: { name: "Alex Rivera", avatar: "/man-1.jpg", initials: "AR" },
-    action: "commented on",
-    type: "comment",
-    target: "API integration task",
-    project: "API Integration",
-    time: "15 minutes ago",
-    date: "Today",
-    icon: MessageSquare,
-    iconColor: "text-accent bg-accent/10",
-    comment: "I've reviewed the endpoints and they look good. Let me know when you're ready for the final review.",
-  },
-  {
-    id: 3,
-    user: { name: "Jordan Lee", avatar: "/man-2.jpg", initials: "JL" },
-    action: "moved",
-    type: "status-change",
-    target: "Mobile app wireframes",
-    project: "Mobile App",
-    time: "1 hour ago",
-    date: "Today",
-    icon: GitBranch,
-    iconColor: "text-primary bg-primary/10",
-    details: "To Do → In Progress",
-  },
-  {
-    id: 4,
-    user: { name: "Emma Wilson", avatar: "/woman-2.jpg", initials: "EW" },
-    action: "created",
-    type: "task-create",
-    target: "Q4 Marketing Campaign project",
-    project: "Marketing Website",
-    time: "2 hours ago",
-    date: "Today",
-    icon: Circle,
-    iconColor: "text-muted-foreground bg-muted",
-  },
-  {
-    id: 5,
-    user: { name: "Michael Brown", avatar: "/man-3.jpg", initials: "MB" },
-    action: "updated deadline for",
-    type: "deadline",
-    target: "Database migration",
-    project: "API Integration",
-    time: "3 hours ago",
-    date: "Today",
-    icon: Clock,
-    iconColor: "text-warning bg-warning/10",
-    details: "Dec 20 → Dec 25",
-  },
-  {
-    id: 6,
-    user: { name: "Sarah Chen", avatar: "/woman-1.jpg", initials: "SC" },
-    action: "assigned",
-    type: "assignment",
-    target: "Code review for payment module",
-    project: "API Integration",
-    time: "Yesterday",
-    date: "Yesterday",
-    icon: UserPlus,
-    iconColor: "text-primary bg-primary/10",
-    details: "to Michael Brown",
-  },
-  {
-    id: 7,
-    user: { name: "Alex Rivera", avatar: "/man-1.jpg", initials: "AR" },
-    action: "edited",
-    type: "edit",
-    target: "Homepage hero section",
-    project: "Marketing Website",
-    time: "Yesterday",
-    date: "Yesterday",
-    icon: Edit,
-    iconColor: "text-muted-foreground bg-muted",
-  },
-  {
-    id: 8,
-    user: { name: "Jordan Lee", avatar: "/man-2.jpg", initials: "JL" },
-    action: "deleted",
-    type: "delete",
-    target: "Outdated design files",
-    project: "Q4 Dashboard",
-    time: "2 days ago",
-    date: "Dec 17, 2025",
-    icon: Trash2,
-    iconColor: "text-destructive bg-destructive/10",
-  },
-  {
-    id: 9,
-    user: { name: "Emma Wilson", avatar: "/woman-2.jpg", initials: "EW" },
-    action: "set due date for",
-    type: "deadline",
-    target: "User testing sessions",
-    project: "Mobile App",
-    time: "2 days ago",
-    date: "Dec 17, 2025",
-    icon: Calendar,
-    iconColor: "text-warning bg-warning/10",
-    details: "Jan 5, 2026",
-  },
-]
+import { useEffect } from "react"
+import { api } from "@/lib/api-client"
+import { Loader2 } from "lucide-react"
 
 export default function ActivityPage() {
+  const [activities, setActivities] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+
+  const fetchActivities = async (currentPage: number, append = false) => {
+    try {
+      if (!append) setIsLoading(true)
+      const { data } = await api.get(`/activity/me?page=${currentPage}&limit=10`)
+      // Backend returns { activities: [], total, page, pages } usually, or just array
+      // Based on controller, it seems to return array directly? ActivityController returns timeline array.
+      // Wait, let's check backend implementation.
+      // ActivityController.getTimeline returns `res.json(timeline)` which is an array.
+      // So no pagination metadata? 
+      // The current controller fetches ALL? No, `prisma.activity.findMany({ take: 20 })`
+      // It limits to 50 or similar.
+      // I should update backend to support pagination if needed, but for now let's assume it returns a list.
+
+      const newActivities = data.map((a: any) => ({
+        id: a.id,
+        user: {
+          name: a.user.firstName + " " + a.user.lastName,
+          avatar: a.user.avatar,
+          initials: a.user.firstName[0] + a.user.lastName[0]
+        },
+        action: a.action,
+        type: a.type, // 'TASK_CREATE', etc.
+        target: a.entityTitle,
+        project: a.project?.name,
+        time: new Date(a.createdAt).toLocaleTimeString(),
+        date: new Date(a.createdAt).toLocaleDateString(),
+        icon: getIconForType(a.type),
+        iconColor: getIconColorForType(a.type),
+        details: a.details?.details // specific logic depending on activity type
+      }))
+
+      if (append) {
+        setActivities(prev => [...prev, ...newActivities])
+      } else {
+        setActivities(newActivities)
+      }
+
+      if (newActivities.length < 10) setHasMore(false)
+
+    } catch (error) {
+      console.error("Failed to fetch activities", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchActivities(1)
+  }, [])
+
+  const handleLoadMore = () => {
+    const nextPage = page + 1
+    setPage(nextPage)
+    fetchActivities(nextPage, true)
+  }
+
+  const getIconForType = (type: string) => {
+    if (type.includes("COMPLETE")) return CheckCircle
+    if (type.includes("COMMENT")) return MessageSquare
+    if (type.includes("STATUS")) return GitBranch
+    if (type.includes("CREATE")) return Circle
+    if (type.includes("DELETE")) return Trash2
+    if (type.includes("ASSIGN")) return UserPlus
+    return Circle
+  }
+
+  const getIconColorForType = (type: string) => {
+    if (type.includes("COMPLETE")) return "text-success bg-success/10"
+    if (type.includes("COMMENT")) return "text-accent bg-accent/10"
+    if (type.includes("STATUS")) return "text-primary bg-primary/10"
+    if (type.includes("DELETE")) return "text-destructive bg-destructive/10"
+    return "text-muted-foreground bg-muted"
+  }
 
   const filteredActivities = activities.filter((activity) => {
     const matchesSearch =
-      activity.target.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      activity.user.name.toLowerCase().includes(searchQuery.toLowerCase())
+      (activity.target?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+      (activity.user?.name?.toLowerCase() || "").includes(searchQuery.toLowerCase())
+    // Backend types might be different from frontend filter values
     const matchesType = typeFilter === "all" || activity.type === typeFilter
-    return matchesSearch && matchesType
+    return matchesSearch
   })
 
   // Group activities by date

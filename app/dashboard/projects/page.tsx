@@ -1,111 +1,60 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ProjectCard } from "@/components/projects/project-card"
-import { Plus, Search, LayoutGrid, List } from "lucide-react"
-
-const projects = [
-  {
-    id: 1,
-    name: "Marketing Website Redesign",
-    description: "Complete overhaul of the company website with new branding and improved user experience.",
-    progress: 75,
-    status: "on-track" as const,
-    members: [
-      { name: "SC", avatar: "/woman-1.jpg" },
-      { name: "AR", avatar: "/man-1.jpg" },
-      { name: "JL", avatar: "/man-2.jpg" },
-    ],
-    dueDate: "Dec 25, 2025",
-    taskCount: 24,
-    completedTasks: 18,
-  },
-  {
-    id: 2,
-    name: "Mobile App Development",
-    description: "Native iOS and Android app for customer self-service and account management.",
-    progress: 45,
-    status: "at-risk" as const,
-    members: [
-      { name: "EW", avatar: "/woman-2.jpg" },
-      { name: "MB", avatar: "/man-3.jpg" },
-    ],
-    dueDate: "Jan 15, 2026",
-    taskCount: 42,
-    completedTasks: 19,
-  },
-  {
-    id: 3,
-    name: "Q4 Analytics Dashboard",
-    description: "Real-time analytics dashboard for tracking key business metrics and KPIs.",
-    progress: 90,
-    status: "on-track" as const,
-    members: [
-      { name: "SC", avatar: "/woman-1.jpg" },
-      { name: "AR", avatar: "/man-1.jpg" },
-    ],
-    dueDate: "Dec 20, 2025",
-    taskCount: 16,
-    completedTasks: 14,
-  },
-  {
-    id: 4,
-    name: "API Integration",
-    description: "RESTful API development for third-party integrations and partner ecosystem.",
-    progress: 30,
-    status: "behind" as const,
-    members: [
-      { name: "JL", avatar: "/man-2.jpg" },
-      { name: "EW", avatar: "/woman-2.jpg" },
-      { name: "MB", avatar: "/man-3.jpg" },
-      { name: "SC", avatar: "/woman-1.jpg" },
-      { name: "AR", avatar: "/man-1.jpg" },
-    ],
-    dueDate: "Jan 30, 2026",
-    taskCount: 38,
-    completedTasks: 11,
-  },
-  {
-    id: 5,
-    name: "Customer Portal v2",
-    description: "Next-generation customer portal with enhanced security and self-service capabilities.",
-    progress: 100,
-    status: "completed" as const,
-    members: [
-      { name: "MB", avatar: "/man-3.jpg" },
-      { name: "SC", avatar: "/woman-1.jpg" },
-    ],
-    dueDate: "Dec 10, 2025",
-    taskCount: 20,
-    completedTasks: 20,
-  },
-  {
-    id: 6,
-    name: "Data Migration Project",
-    description: "Migration of legacy data systems to new cloud infrastructure.",
-    progress: 60,
-    status: "on-track" as const,
-    members: [
-      { name: "AR", avatar: "/man-1.jpg" },
-      { name: "JL", avatar: "/man-2.jpg" },
-    ],
-    dueDate: "Feb 28, 2026",
-    taskCount: 30,
-    completedTasks: 18,
-  },
-]
+import { Search, LayoutGrid, List, Loader2 } from "lucide-react"
+import { api } from "@/lib/api-client"
+import { CreateProjectDialog } from "@/components/projects/create-project-dialog"
 
 export default function ProjectsPage() {
+  interface Project {
+    id: string
+    name: string
+    description: string
+    progress: number
+    updatedAt: string
+    members: Array<{
+      user: {
+        firstName: string
+        avatar?: string
+      }
+    }>
+  }
+
+  const [projects, setProjects] = useState<Project[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
 
+  const fetchProjects = async () => {
+    try {
+      setIsLoading(true)
+      const { data } = await api.get("/projects")
+      setProjects(data)
+    } catch (error) {
+      console.error("Failed to fetch projects", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchProjects()
+  }, [])
+
   const filteredProjects = projects.filter((project) => {
     const matchesSearch = project.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = statusFilter === "all" || project.status === statusFilter
+    // Status filter logic might need adjustment based on how we define project status in backend
+    // Backend doesn't explicitly store project 'status', but we can infer or ignore for now
+    // For now, let's say "completed" is if progress is 100
+    let matchesStatus = true
+    if (statusFilter === "completed") matchesStatus = project.progress === 100
+    if (statusFilter === "on-track") matchesStatus = project.progress < 100
+
     return matchesSearch && matchesStatus
   })
 
@@ -117,10 +66,7 @@ export default function ProjectsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
           <p className="text-muted-foreground">Manage and track all your team projects.</p>
         </div>
-        <Button className="btn-3d">
-          <Plus className="mr-2 h-4 w-4" />
-          New Project
-        </Button>
+        <CreateProjectDialog onProjectCreated={fetchProjects} />
       </div>
 
       {/* Filters */}
@@ -140,9 +86,7 @@ export default function ProjectsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="on-track">On Track</SelectItem>
-            <SelectItem value="at-risk">At Risk</SelectItem>
-            <SelectItem value="behind">Behind</SelectItem>
+            <SelectItem value="on-track">Active</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
           </SelectContent>
         </Select>
@@ -166,14 +110,33 @@ export default function ProjectsPage() {
         </div>
       </div>
 
-      {/* Project Grid */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredProjects.map((project) => (
-          <ProjectCard key={project.id} {...project} />
-        ))}
-      </div>
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
 
-      {filteredProjects.length === 0 && (
+      {/* Project Grid */}
+      {!isLoading && (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredProjects.map((project) => (
+            <ProjectCard
+              key={project.id}
+              {...project}
+              // Map backend fields to frontend component expectations
+              status={project.progress === 100 ? "completed" : "on-track"}
+              dueDate={project.updatedAt ? new Date(project.updatedAt).toLocaleDateString() : "No date"}
+              members={project.members.map((m: any) => ({
+                name: m.user.firstName,
+                avatar: m.user.avatar
+              }))}
+            />
+          ))}
+        </div>
+      )}
+
+      {!isLoading && filteredProjects.length === 0 && (
         <div className="text-center py-12">
           <p className="text-muted-foreground">No projects found matching your criteria.</p>
         </div>

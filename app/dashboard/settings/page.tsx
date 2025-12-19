@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,18 +11,133 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useTheme } from "next-themes"
-import { Camera, Monitor, Moon, Sun, Bell, Shield, Palette } from "lucide-react"
+import { Camera, Monitor, Moon, Sun, Bell, Shield, Palette, Loader2 } from "lucide-react"
+import { useAuthStore } from "@/lib/auth-store"
+import { api } from "@/lib/api-client"
+import { toast } from "sonner"
 
 export default function SettingsPage() {
+  const { user, updateUser, checkAuth } = useAuthStore()
   const { theme, setTheme } = useTheme()
+  const [isLoading, setIsLoading] = useState(false)
+
+  // Profile Form State
+  const [profileData, setProfileData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    bio: "", // Note: Backend doesn't seem to store bio yet, but UI has it. We'll ignore for now or add to schema.
+    // Actually schema in users.controller.ts only has firstName, lastName, email, avatar.
+    // I will skip bio submission for now or assume it's ignored.
+  })
+
+  // Password Form State
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  })
+
+  // Notifications State
   const [notifications, setNotifications] = useState({
     email: true,
     push: true,
-    taskAssigned: true,
+    taskAssigned: true, // Backend logic for these specific toggles might not exist yet besides 'emailNotif' and 'pushNotif'
     taskCompleted: true,
     mentions: true,
     deadlines: true,
   })
+
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        email: user.email || "",
+        bio: "", // Placeholder
+      })
+      // Fetch current preferences if available
+      const fetchPreferences = async () => {
+        try {
+          // We can use the user object directly if it has these fields, or fetch specifically
+          // The auth store user object has "emailNotif", "pushNotif", "theme"
+          // Typescript check on user object might reveal if these properties exist on the interface
+          // Looking at auth-store, User interface has: id, email, firstName, lastName, avatar, role.
+          // It does NOT have theme/preferences. We should fetch fresh profile data or update store.
+          const { data } = await api.get("/users/me")
+          setNotifications(prev => ({
+            ...prev,
+            email: data.emailNotif,
+            push: data.pushNotif
+          }))
+          // Optional: sync theme from backend if different from local storage?
+          // Usually theme is local preference, but let's stick to simple
+        } catch (e) {
+          console.error("Failed to fetch preferences", e)
+        }
+      }
+      fetchPreferences()
+    }
+  }, [user])
+
+  const handleProfileUpdate = async () => {
+    try {
+      setIsLoading(true)
+      const { data } = await api.put("/users/me", {
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        // email: profileData.email // user might verify email, let's keep it safe and update name first
+      })
+      updateUser(data)
+      toast.success("Profile updated successfully")
+    } catch (error: any) {
+      toast.error("Failed to update profile")
+      console.error(error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handlePasswordUpdate = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error("New passwords do not match")
+      return
+    }
+
+    try {
+      setIsLoading(true)
+      await api.put("/users/me/password", {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
+      })
+      toast.success("Password updated successfully")
+      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" })
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to update password")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handlePreferencesUpdate = async () => {
+    try {
+      setIsLoading(true)
+      await api.put("/users/me/preferences", {
+        emailNotif: notifications.email,
+        pushNotif: notifications.push,
+        theme: theme as any
+      })
+      toast.success("Preferences saved")
+    } catch (error) {
+      toast.error("Failed to save preferences")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // TODO: Avatar upload handler
+
+  if (!user) return <div className="p-8">Loading settings...</div>
 
   return (
     <div className="space-y-6">
@@ -52,8 +167,8 @@ export default function SettingsPage() {
               <div className="flex items-center gap-6">
                 <div className="relative">
                   <Avatar className="h-24 w-24">
-                    <AvatarImage src="/professional-man-beard.jpg" />
-                    <AvatarFallback className="text-2xl">JD</AvatarFallback>
+                    <AvatarImage src={user.avatar || "/placeholder-user.jpg"} />
+                    <AvatarFallback className="text-2xl">{user.firstName[0]}{user.lastName[0]}</AvatarFallback>
                   </Avatar>
                   <Button
                     size="icon"
@@ -73,42 +188,50 @@ export default function SettingsPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First Name</Label>
-                  <Input id="firstName" defaultValue="John" />
+                  <Input
+                    id="firstName"
+                    value={profileData.firstName}
+                    onChange={(e) => setProfileData({ ...profileData, firstName: e.target.value })}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lastName">Last Name</Label>
-                  <Input id="lastName" defaultValue="Doe" />
+                  <Input
+                    id="lastName"
+                    value={profileData.lastName}
+                    onChange={(e) => setProfileData({ ...profileData, lastName: e.target.value })}
+                  />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" defaultValue="john@company.com" />
+                  <Input
+                    id="email"
+                    type="email"
+                    value={profileData.email}
+                    disabled
+                    className="bg-muted"
+                  />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="bio">Bio</Label>
-                  <Textarea id="bio" placeholder="Tell us about yourself..." className="min-h-[100px]" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Input id="role" defaultValue="Product Manager" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
-                  <Select defaultValue="product">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="engineering">Engineering</SelectItem>
-                      <SelectItem value="design">Design</SelectItem>
-                      <SelectItem value="product">Product</SelectItem>
-                      <SelectItem value="marketing">Marketing</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Textarea
+                    id="bio"
+                    placeholder="Tell us about yourself..."
+                    className="min-h-[100px]"
+                    value={profileData.bio}
+                    onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    * Bio is currently not stored in backend database
+                  </p>
                 </div>
               </div>
 
               <div className="flex justify-end">
-                <Button className="btn-3d">Save Changes</Button>
+                <Button className="btn-3d" onClick={handleProfileUpdate} disabled={isLoading}>
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Changes
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -192,42 +315,11 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="border-t pt-6">
-                <h4 className="font-medium mb-4">Notify me about</h4>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm">Task assignments</p>
-                    <Switch
-                      checked={notifications.taskAssigned}
-                      onCheckedChange={(checked) => setNotifications((n) => ({ ...n, taskAssigned: checked }))}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm">Task completions</p>
-                    <Switch
-                      checked={notifications.taskCompleted}
-                      onCheckedChange={(checked) => setNotifications((n) => ({ ...n, taskCompleted: checked }))}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm">Mentions and comments</p>
-                    <Switch
-                      checked={notifications.mentions}
-                      onCheckedChange={(checked) => setNotifications((n) => ({ ...n, mentions: checked }))}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm">Upcoming deadlines</p>
-                    <Switch
-                      checked={notifications.deadlines}
-                      onCheckedChange={(checked) => setNotifications((n) => ({ ...n, deadlines: checked }))}
-                    />
-                  </div>
-                </div>
-              </div>
-
               <div className="flex justify-end">
-                <Button className="btn-3d">Save Preferences</Button>
+                <Button className="btn-3d" onClick={handlePreferencesUpdate} disabled={isLoading}>
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Preferences
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -246,55 +338,42 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="currentPassword">Current Password</Label>
-                <Input id="currentPassword" type="password" />
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  value={passwordData.currentPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="newPassword">New Password</Label>
-                <Input id="newPassword" type="password" />
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                <Input id="confirmPassword" type="password" />
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                />
               </div>
               <div className="flex justify-end">
-                <Button className="btn-3d">Update Password</Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Two-Factor Authentication</CardTitle>
-              <CardDescription>Add an extra layer of security to your account.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Enable 2FA</p>
-                  <p className="text-sm text-muted-foreground">Secure your account with two-factor authentication</p>
-                </div>
-                <Button variant="outline" className="bg-transparent">
-                  Enable
+                <Button className="btn-3d" onClick={handlePasswordUpdate} disabled={isLoading}>
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Update Password
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-destructive/50">
-            <CardHeader>
-              <CardTitle className="text-destructive">Danger Zone</CardTitle>
-              <CardDescription>Irreversible actions for your account.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Delete Account</p>
-                  <p className="text-sm text-muted-foreground">Permanently delete your account and all data</p>
-                </div>
-                <Button variant="destructive">Delete Account</Button>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Danger Zone omitted for now */}
+
         </TabsContent>
       </Tabs>
     </div>

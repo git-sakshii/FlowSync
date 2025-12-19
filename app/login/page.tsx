@@ -10,9 +10,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
+import { api } from "@/lib/api-client"
+import { useAuthStore } from "@/lib/auth-store"
+import { toast } from "sonner"
 
 export default function LoginPage() {
   const router = useRouter()
+  const { login } = useAuthStore()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
@@ -22,9 +26,22 @@ export default function LoginPage() {
     setIsLoading(true)
     setError("")
 
-    // Simulate login
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    router.push("/dashboard")
+    const formData = new FormData(e.currentTarget)
+    const email = formData.get("email") as string
+    const password = formData.get("password") as string
+
+    try {
+      const { data } = await api.post("/auth/login", { email, password })
+
+      login(data.user, data.tokens)
+      toast.success("Welcome back!", { description: "You have successfully logged in." })
+      router.push("/dashboard")
+    } catch (err: any) {
+      const message = err.response?.data?.message || "Something went wrong. Please try again."
+      setError(message)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -34,7 +51,7 @@ export default function LoginPage() {
 
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" placeholder="name@company.com" required className="h-11" />
+          <Input name="email" id="email" type="email" placeholder="name@company.com" required className="h-11" />
         </div>
 
         <div className="space-y-2">
@@ -46,6 +63,7 @@ export default function LoginPage() {
           </div>
           <div className="relative">
             <Input
+              name="password"
               id="password"
               type={showPassword ? "text" : "password"}
               placeholder="••••••••"

@@ -1,100 +1,68 @@
 "use client"
 
-import { Checkbox } from "@/components/ui/checkbox"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { useState } from "react"
-
-const initialTasks = [
-  {
-    id: 1,
-    title: "Review design mockups",
-    priority: "high",
-    project: "Marketing Website",
-    dueDate: "Today",
-    completed: false,
-  },
-  {
-    id: 2,
-    title: "Update API documentation",
-    priority: "medium",
-    project: "API Integration",
-    dueDate: "Tomorrow",
-    completed: false,
-  },
-  {
-    id: 3,
-    title: "Fix mobile navigation bug",
-    priority: "high",
-    project: "Mobile App",
-    dueDate: "Tomorrow",
-    completed: false,
-  },
-  {
-    id: 4,
-    title: "Prepare sprint retrospective",
-    priority: "low",
-    project: "Q4 Dashboard",
-    dueDate: "Dec 22",
-    completed: true,
-  },
-  {
-    id: 5,
-    title: "Database schema review",
-    priority: "medium",
-    project: "API Integration",
-    dueDate: "Dec 23",
-    completed: false,
-  },
-]
-
-const priorityStyles = {
-  high: "bg-destructive/10 text-destructive",
-  medium: "bg-warning/10 text-warning",
-  low: "bg-muted text-muted-foreground",
-}
+import { Calendar, CheckCircle2, Circle, Clock } from "lucide-react"
+import { useEffect, useState } from "react"
+import { api } from "@/lib/api-client"
 
 export function UpcomingTasks() {
-  const [tasks, setTasks] = useState(initialTasks)
+  const [tasks, setTasks] = useState<any[]>([])
 
-  const toggleTask = (id: number) => {
-    setTasks(tasks.map((task) => (task.id === id ? { ...task, completed: !task.completed } : task)))
-  }
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const { data } = await api.get("/tasks")
+        setTasks(data.slice(0, 5)) // Top 5
+      } catch (error) {
+        console.error("Failed to fetch upcoming tasks", error)
+      }
+    }
+    fetchTasks()
+  }, [])
 
   return (
-    <div className="rounded-xl border border-border bg-card">
-      <div className="flex items-center justify-between p-4 border-b border-border">
-        <h3 className="font-semibold">Upcoming Tasks</h3>
-        <span className="text-sm text-muted-foreground">{tasks.filter((t) => !t.completed).length} remaining</span>
-      </div>
-      <div className="divide-y divide-border">
-        {tasks.map((task) => (
-          <div
-            key={task.id}
-            className={cn(
-              "flex items-start gap-3 p-4 hover:bg-muted/50 transition-colors",
-              task.completed && "opacity-60",
-            )}
-          >
-            <Checkbox checked={task.completed} onCheckedChange={() => toggleTask(task.id)} className="mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <p className={cn("text-sm font-medium", task.completed && "line-through")}>{task.title}</p>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-muted-foreground">{task.project}</span>
-                <span className="text-muted-foreground">•</span>
-                <span className="text-xs text-muted-foreground">{task.dueDate}</span>
+    <Card>
+      <CardHeader>
+        <CardTitle>Upcoming Tasks</CardTitle>
+        <CardDescription>Tasks assigned to you due soon.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {tasks.map((task) => (
+            <div key={task.id} className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+              <button className="mt-0.5 text-muted-foreground hover:text-primary">
+                {task.status === 'DONE' ? (
+                  <CheckCircle2 className="h-5 w-5 text-success" />
+                ) : (
+                  <Circle className="h-5 w-5" />
+                )}
+              </button>
+              <div className="flex-1 min-w-0">
+                <p className={cn("font-medium text-sm", task.status === 'DONE' && "line-through text-muted-foreground")}>
+                  {task.title}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs text-muted-foreground">{task.project?.name || 'No Project'}</span>
+                  {task.dueDate && (
+                    <span className={cn(
+                      "text-xs px-1.5 py-0.5 rounded flex items-center gap-1",
+                      new Date(task.dueDate) < new Date() ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
+                    )}>
+                      <Clock className="h-3 w-3" />
+                      {new Date(task.dueDate).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-            <span
-              className={cn(
-                "text-xs font-medium px-2 py-1 rounded-full shrink-0",
-                priorityStyles[task.priority as keyof typeof priorityStyles],
-              )}
-            >
-              {task.priority}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
+          ))}
+          {tasks.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">No upcoming tasks.</p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   )
 }

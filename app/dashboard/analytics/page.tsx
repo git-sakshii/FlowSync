@@ -20,79 +20,43 @@ import {
   Legend,
 } from "recharts"
 
-const taskCompletionData = [
-  { name: "Week 1", completed: 18, created: 24 },
-  { name: "Week 2", completed: 22, created: 20 },
-  { name: "Week 3", completed: 28, created: 32 },
-  { name: "Week 4", completed: 35, created: 28 },
-  { name: "Week 5", completed: 30, created: 25 },
-  { name: "Week 6", completed: 42, created: 38 },
-]
-
-const projectProgressData = [
-  { name: "Marketing Website", progress: 75 },
-  { name: "Mobile App", progress: 45 },
-  { name: "Q4 Dashboard", progress: 90 },
-  { name: "API Integration", progress: 30 },
-  { name: "Customer Portal", progress: 100 },
-]
-
-const taskDistributionData = [
-  { name: "To Do", value: 28, color: "hsl(var(--muted-foreground))" },
-  { name: "In Progress", value: 35, color: "hsl(var(--primary))" },
-  { name: "Review", value: 12, color: "hsl(var(--warning))" },
-  { name: "Done", value: 56, color: "hsl(var(--success))" },
-]
-
-const workloadData = [
-  {
-    id: 1,
-    name: "Sarah Chen",
-    avatar: "/woman-1.jpg",
-    initials: "SC",
-    tasks: 8,
-    completed: 24,
-    workload: 85,
-  },
-  {
-    id: 2,
-    name: "Alex Rivera",
-    avatar: "/man-1.jpg",
-    initials: "AR",
-    tasks: 5,
-    completed: 18,
-    workload: 60,
-  },
-  {
-    id: 3,
-    name: "Jordan Lee",
-    avatar: "/man-2.jpg",
-    initials: "JL",
-    tasks: 6,
-    completed: 31,
-    workload: 70,
-  },
-  {
-    id: 4,
-    name: "Emma Wilson",
-    avatar: "/woman-2.jpg",
-    initials: "EW",
-    tasks: 4,
-    completed: 42,
-    workload: 45,
-  },
-  {
-    id: 5,
-    name: "Michael Brown",
-    avatar: "/man-3.jpg",
-    initials: "MB",
-    tasks: 7,
-    completed: 15,
-    workload: 75,
-  },
-]
+import { useEffect, useState } from "react"
+import { api } from "@/lib/api-client"
 
 export default function AnalyticsPage() {
+  const [taskCompletionData, setTaskCompletionData] = useState<any[]>([])
+  const [projectProgressData, setProjectProgressData] = useState<any[]>([])
+  const [taskDistributionData, setTaskDistributionData] = useState<any[]>([])
+  const [workloadData, setWorkloadData] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        setIsLoading(true)
+        const [trendsRes, progressRes, distributionRes, workloadRes] = await Promise.all([
+          api.get("/analytics/task-trends"),
+          api.get("/analytics/project-progress"),
+          api.get("/analytics/task-distribution"),
+          api.get("/analytics/team-workload")
+        ])
+
+        setTaskCompletionData(trendsRes.data)
+        setProjectProgressData(progressRes.data)
+        setTaskDistributionData(distributionRes.data)
+        setWorkloadData(workloadRes.data)
+      } catch (error) {
+        console.error("Failed to fetch analytics", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchAnalytics()
+  }, [])
+
+  if (isLoading) {
+    return <div className="flex h-[50vh] items-center justify-center">Loading analytics...</div>
+  }
   return (
     <div className="space-y-6">
       {/* Header */}

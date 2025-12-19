@@ -11,12 +11,17 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Eye, EyeOff, Loader2, Check } from "lucide-react"
+import { api } from "@/lib/api-client"
+import { useAuthStore } from "@/lib/auth-store"
+import { toast } from "sonner"
 
 export default function SignupPage() {
   const router = useRouter()
+  const { login } = useAuthStore()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
 
   const passwordRequirements = [
     { label: "At least 8 characters", met: password.length >= 8 },
@@ -27,35 +32,65 @@ export default function SignupPage() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setIsLoading(true)
+    setError("")
 
-    // Simulate signup
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    router.push("/dashboard")
+    const formData = new FormData(e.currentTarget)
+    const firstName = formData.get("firstName") as string
+    const lastName = formData.get("lastName") as string
+    const email = formData.get("email") as string
+
+    // Validate password requirements client-side too
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long")
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      const { data } = await api.post("/auth/signup", {
+        email,
+        password,
+        firstName,
+        lastName
+      })
+
+      login(data.user, data.tokens)
+      toast.success("Account created!", { description: "You have successfully signed up." })
+      router.push("/dashboard")
+    } catch (err: any) {
+      const message = err.response?.data?.message || "Something went wrong. Please try again."
+      setError(message)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
     <AuthLayout title="Create your account" description="Start your 14-day free trial. No credit card required.">
       <form onSubmit={handleSubmit} className="space-y-6">
+        {error && <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>}
+
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="firstName">First name</Label>
-            <Input id="firstName" placeholder="John" required className="h-11" />
+            <Input name="firstName" id="firstName" placeholder="John" required className="h-11" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="lastName">Last name</Label>
-            <Input id="lastName" placeholder="Doe" required className="h-11" />
+            <Input name="lastName" id="lastName" placeholder="Doe" required className="h-11" />
           </div>
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="email">Work email</Label>
-          <Input id="email" type="email" placeholder="name@company.com" required className="h-11" />
+          <Input name="email" id="email" type="email" placeholder="name@company.com" required className="h-11" />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
           <div className="relative">
             <Input
+              name="password"
               id="password"
               type={showPassword ? "text" : "password"}
               placeholder="Create a strong password"

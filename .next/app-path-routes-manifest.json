@@ -1,0 +1,16 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/dashboard/activity/page": "/dashboard/activity",
+  "/dashboard/analytics/page": "/dashboard/analytics",
+  "/dashboard/kanban/page": "/dashboard/kanban",
+  "/dashboard/page": "/dashboard",
+  "/dashboard/projects/page": "/dashboard/projects",
+  "/dashboard/settings/page": "/dashboard/settings",
+  "/dashboard/tasks/page": "/dashboard/tasks",
+  "/dashboard/team/page": "/dashboard/team",
+  "/forgot-password/page": "/forgot-password",
+  "/login/page": "/login",
+  "/page": "/",
+  "/signup/page": "/signup"
+}

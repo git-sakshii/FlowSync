@@ -1,81 +1,80 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CheckCircle, Circle, GitBranch, MessageSquare, Clock } from "lucide-react"
+import { CheckCircle, Circle, GitBranch, MessageSquare, Clock, ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-const activities = [
-  {
-    id: 1,
-    user: { name: "Sarah Chen", avatar: "/professional-woman-asian.jpg", initials: "SC" },
-    action: "completed",
-    target: "Design system documentation",
-    time: "5 minutes ago",
-    icon: CheckCircle,
-    iconColor: "text-success",
-  },
-  {
-    id: 2,
-    user: { name: "Alex Rivera", avatar: "/professional-man-hispanic.jpg", initials: "AR" },
-    action: "commented on",
-    target: "API integration task",
-    time: "15 minutes ago",
-    icon: MessageSquare,
-    iconColor: "text-accent",
-  },
-  {
-    id: 3,
-    user: { name: "Jordan Lee", avatar: "/professional-man-asian.jpg", initials: "JL" },
-    action: "moved",
-    target: "Mobile app wireframes to In Progress",
-    time: "1 hour ago",
-    icon: GitBranch,
-    iconColor: "text-primary",
-  },
-  {
-    id: 4,
-    user: { name: "Emma Wilson", avatar: "/professional-woman-blonde.jpg", initials: "EW" },
-    action: "created",
-    target: "Q4 Marketing Campaign project",
-    time: "2 hours ago",
-    icon: Circle,
-    iconColor: "text-muted-foreground",
-  },
-  {
-    id: 5,
-    user: { name: "Michael Brown", avatar: "/professional-man-beard.jpg", initials: "MB" },
-    action: "updated deadline for",
-    target: "Database migration",
-    time: "3 hours ago",
-    icon: Clock,
-    iconColor: "text-warning",
-  },
-]
+import { api } from "@/lib/api-client"
 
 export function ActivityFeed() {
+  const [activities, setActivities] = useState<any[]>([])
+
+  useEffect(() => {
+    const fetchActivity = async () => {
+      try {
+        const { data } = await api.get("/activity/me")
+        setActivities(data.slice(0, 10))
+      } catch (error) {
+        console.error("Failed to fetch activity", error)
+      }
+    }
+    fetchActivity()
+  }, [])
+
+  const getIcon = (type: string) => {
+    switch (type) {
+      case 'completed': return CheckCircle
+      case 'commented': return MessageSquare
+      case 'moved': return ArrowRight // GitBranch
+      case 'created': return Circle
+      case 'updated': return Clock
+      default: return Circle
+    }
+  }
+
+  const getIconColor = (type: string) => {
+    switch (type) {
+      case 'completed': return "text-success"
+      case 'commented': return "text-accent"
+      case 'moved': return "text-primary"
+      case 'created': return "text-muted-foreground"
+      case 'updated': return "text-warning"
+      default: return "text-muted-foreground"
+    }
+  }
+
   return (
     <div className="rounded-xl border border-border bg-card">
       <div className="p-4 border-b border-border">
         <h3 className="font-semibold">Recent Activity</h3>
       </div>
-      <div className="divide-y divide-border">
-        {activities.map((activity) => (
-          <div key={activity.id} className="flex items-start gap-3 p-4 hover:bg-muted/50 transition-colors">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={activity.user.avatar || "/placeholder.svg"} alt={activity.user.name} />
-              <AvatarFallback>{activity.user.initials}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm">
-                <span className="font-medium">{activity.user.name}</span>{" "}
-                <span className="text-muted-foreground">{activity.action}</span>{" "}
-                <span className="font-medium">{activity.target}</span>
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
+      <div className="divide-y divide-border max-h-[400px] overflow-y-auto">
+        {activities.map((activity) => {
+          const Icon = getIcon(activity.type)
+          return (
+            <div key={activity.id} className="flex items-start gap-3 p-4 hover:bg-muted/50 transition-colors">
+              <Avatar className="h-8 w-8">
+                {/* Fallback to user avatar if available in relation, otherwise placeholder */}
+                <AvatarImage src={"/placeholder.svg"} />
+                <AvatarFallback>UA</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm">
+                  <span className="font-medium">You</span>{" "}
+                  <span className="text-muted-foreground">{activity.action}</span>{" "}
+                  <span className="font-medium truncate block">{activity.target}</span>
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {new Date(activity.createdAt).toLocaleString()}
+                </p>
+              </div>
+              <Icon className={cn("h-5 w-5 shrink-0", getIconColor(activity.type))} />
             </div>
-            <activity.icon className={cn("h-5 w-5 shrink-0", activity.iconColor)} />
-          </div>
-        ))}
+          )
+        })}
+        {activities.length === 0 && (
+          <p className="text-sm text-muted-foreground text-center py-4">No recent activity.</p>
+        )}
       </div>
       <div className="p-4 border-t border-border">
         <button className="text-sm text-primary hover:underline w-full text-center">View all activity</button>
