@@ -31,12 +31,19 @@ const navigation = [
 
 import { useAuthStore } from "@/lib/auth-store"
 import { getInitials } from "@/lib/utils"
+import { useMounted } from "@/hooks/use-mounted"
 // import { useState } from "react" // Removing duplicate if exists in same block, but here we just add imports
 
 export function AppSidebar() {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuthStore()
+  const mounted = useMounted()
+
+  // Prevent hydration mismatch
+  if (!mounted) return (
+    <aside className={cn("fixed left-0 top-0 z-40 h-screen border-r border-sidebar-border bg-sidebar w-64")} />
+  )
 
   const initials = getInitials(user?.firstName || "", user?.lastName || "")
   const fullName = user ? `${user.firstName} ${user.lastName}` : "User"

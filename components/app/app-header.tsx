@@ -17,15 +17,17 @@ import Link from "next/link"
 
 import { useAuthStore } from "@/lib/auth-store"
 import { getInitials } from "@/lib/utils"
+import { useMounted } from "@/hooks/use-mounted"
 
 export function AppHeader({ onOpenSearch, onOpenNotifications }: AppHeaderProps) {
   const { theme, setTheme } = useTheme()
   const { user, logout } = useAuthStore()
   const [hasUnreadNotifications] = useState(true)
+  const mounted = useMounted()
 
-  const initials = getInitials(user?.firstName || "", user?.lastName || "")
-  const fullName = user ? `${user.firstName} ${user.lastName}` : "User"
-  const email = user?.email || ""
+  const initials = mounted ? getInitials(user?.firstName || "", user?.lastName || "") : ""
+  const fullName = mounted && user ? `${user.firstName} ${user.lastName}` : ""
+  const email = mounted ? (user?.email || "") : ""
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6">
