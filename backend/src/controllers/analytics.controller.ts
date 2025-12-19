@@ -155,7 +155,7 @@ export const getTeamWorkload = async (req: any, res: Response) => {
                 id: user.id,
                 name: `${user.firstName} ${user.lastName}`,
                 avatar: user.avatar,
-                initials: `${user.firstName[0]}${user.lastName[0]}`,
+                initials: `${(user.firstName?.[0] || '').toUpperCase()}${(user.lastName?.[0] || '').toUpperCase()}`,
                 tasks: pending,
                 completed,
                 workload

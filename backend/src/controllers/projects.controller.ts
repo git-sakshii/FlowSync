@@ -70,6 +70,7 @@ export const getProjects = async (req: any, res: Response) => {
                     }
                 },
                 tasks: {
+                    where: { deletedAt: null },
                     select: { status: true }
                 }
             },

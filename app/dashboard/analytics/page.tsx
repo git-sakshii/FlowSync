@@ -35,10 +35,10 @@ export default function AnalyticsPage() {
       try {
         setIsLoading(true)
         const [trendsRes, progressRes, distributionRes, workloadRes] = await Promise.all([
-          api.get("/analytics/task-trends"),
-          api.get("/analytics/project-progress"),
-          api.get("/analytics/task-distribution"),
-          api.get("/analytics/team-workload")
+          api.get("/analytics/tasks/completion"),
+          api.get("/analytics/projects/progress"),
+          api.get("/analytics/tasks/distribution"),
+          api.get("/analytics/team/workload")
         ])
 
         setTaskCompletionData(trendsRes.data)

@@ -29,9 +29,18 @@ const navigation = [
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
+import { useAuthStore } from "@/lib/auth-store"
+import { getInitials } from "@/lib/utils"
+// import { useState } from "react" // Removing duplicate if exists in same block, but here we just add imports
+
 export function AppSidebar() {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
+  const { user } = useAuthStore()
+
+  const initials = getInitials(user?.firstName || "", user?.lastName || "")
+  const fullName = user ? `${user.firstName} ${user.lastName}` : "User"
+  const email = user?.email || ""
 
   return (
     <aside
@@ -94,13 +103,17 @@ export function AppSidebar() {
         {/* User section */}
         <div className="border-t border-sidebar-border p-4">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium">
-              JD
+            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium overflow-hidden">
+              {user?.avatar ? (
+                <img src={user.avatar} alt={fullName} className="h-full w-full object-cover" />
+              ) : (
+                <span>{initials}</span>
+              )}
             </div>
             {!collapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-sidebar-foreground truncate">John Doe</p>
-                <p className="text-xs text-sidebar-foreground/60 truncate">john@company.com</p>
+                <p className="text-sm font-medium text-sidebar-foreground truncate">{fullName}</p>
+                <p className="text-xs text-sidebar-foreground/60 truncate">{email}</p>
               </div>
             )}
           </div>

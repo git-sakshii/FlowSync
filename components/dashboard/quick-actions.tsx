@@ -2,27 +2,31 @@
 
 import { Button } from "@/components/ui/button"
 import { Plus, FolderPlus, UserPlus, FileText } from "lucide-react"
-
-const actions = [
-  { label: "New Task", icon: Plus, variant: "default" as const },
-  { label: "New Project", icon: FolderPlus, variant: "outline" as const },
-  { label: "Invite Member", icon: UserPlus, variant: "outline" as const },
-  { label: "Create Report", icon: FileText, variant: "outline" as const },
-]
+import { CreateProjectDialog } from "@/components/projects/create-project-dialog"
+import { CreateTaskDialog } from "@/components/tasks/create-task-dialog"
 
 export function QuickActions() {
   return (
     <div className="flex flex-wrap gap-3">
-      {actions.map((action) => (
-        <Button
-          key={action.label}
-          variant={action.variant}
-          className={action.variant === "default" ? "btn-3d" : "bg-transparent"}
-        >
-          <action.icon className="mr-2 h-4 w-4" />
-          {action.label}
-        </Button>
-      ))}
+      <CreateTaskDialog
+        trigger={
+          <Button className="btn-3d">
+            <Plus className="mr-2 h-4 w-4" />
+            New Task
+          </Button>
+        }
+      />
+
+      <CreateProjectDialog />
+
+      <Button variant="outline" className="bg-transparent">
+        <UserPlus className="mr-2 h-4 w-4" />
+        Invite Member
+      </Button>
+      <Button variant="outline" className="bg-transparent">
+        <FileText className="mr-2 h-4 w-4" />
+        Create Report
+      </Button>
     </div>
   )
 }

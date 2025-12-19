@@ -88,8 +88,11 @@ export const getTasks = async (req: any, res: Response) => {
 
 export const getTask = async (req: any, res: Response) => {
     try {
-        const task = await prisma.task.findUnique({
-            where: { id: req.params.id },
+        const task = await prisma.task.findFirst({
+            where: {
+                id: req.params.id,
+                deletedAt: null
+            },
             include: {
                 assignee: { select: { id: true, firstName: true, lastName: true, avatar: true } },
                 project: { select: { id: true, name: true } }
@@ -257,6 +260,26 @@ export const assignTask = async (req: any, res: Response) => {
         }
 
         res.json(task);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+export const getMyTasks = async (req: any, res: Response) => {
+    try {
+        const tasks = await prisma.task.findMany({
+            where: {
+                assigneeId: req.user.id,
+                deletedAt: null,
+            },
+            include: {
+                project: { select: { id: true, name: true } },
+                assignee: { select: { id: true, firstName: true, lastName: true, avatar: true } }
+            },
+            orderBy: { dueDate: 'asc' }
+        });
+
+        res.json(tasks);
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
     }
