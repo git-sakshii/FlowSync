@@ -107,6 +107,13 @@ export const getProject = async (req: any, res: Response) => {
                 },
                 _count: {
                     select: { tasks: true }
+                },
+                tasks: {
+                    where: { deletedAt: null },
+                    include: {
+                        assignee: { select: { id: true, firstName: true, lastName: true, avatar: true } }
+                    },
+                    orderBy: { order: 'asc' }
                 }
             }
         });

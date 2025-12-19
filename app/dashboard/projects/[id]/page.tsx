@@ -9,8 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
 import { getInitials } from "@/lib/utils"
-import { Loader2, Calendar, MoreHorizontal, ArrowLeft } from "lucide-react"
 import { CreateTaskDialog } from "@/components/tasks/create-task-dialog"
+import { AddMemberDialog } from "@/components/projects/add-member-dialog"
+import { Loader2, Calendar, MoreHorizontal, ArrowLeft, UserPlus } from "lucide-react"
 
 interface Project {
     id: string
@@ -172,7 +173,7 @@ export default function ProjectDetailsPage() {
                                         </div>
                                         <div className="flex items-center gap-4 text-sm">
                                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${task.priority === 'HIGH' ? 'bg-destructive/10 text-destructive' :
-                                                    task.priority === 'MEDIUM' ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'
+                                                task.priority === 'MEDIUM' ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'
                                                 }`}>
                                                 {task.priority}
                                             </span>

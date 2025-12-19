@@ -152,18 +152,18 @@ export const updateUserRole = async (req: any, res: Response) => {
 export const searchUsers = async (req: any, res: Response) => {
     try {
         const { q } = req.query;
-        if (!q || typeof q !== 'string') {
-            return res.json([]);
+
+        const where: any = {};
+        if (q && typeof q === 'string') {
+            where.OR = [
+                { firstName: { contains: q, mode: 'insensitive' } },
+                { lastName: { contains: q, mode: 'insensitive' } },
+                { email: { contains: q, mode: 'insensitive' } },
+            ];
         }
 
         const users = await prisma.user.findMany({
-            where: {
-                OR: [
-                    { firstName: { contains: q, mode: 'insensitive' } },
-                    { lastName: { contains: q, mode: 'insensitive' } },
-                    { email: { contains: q, mode: 'insensitive' } },
-                ],
-            },
+            where,
             take: 10,
             select: {
                 id: true,

@@ -1,13 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
-import { Search, Plus, Mail, MoreHorizontal, Shield, User } from "lucide-react"
+import { cn, getInitials } from "@/lib/utils"
+import { Search, Plus, Mail, MoreHorizontal, Shield, User, Loader2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,100 +15,41 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-
-const teamMembers = [
-  {
-    id: 1,
-    name: "Sarah Chen",
-    email: "sarah@flowsync.com",
-    avatar: "/woman-1.jpg",
-    initials: "SC",
-    role: "Admin",
-    department: "Engineering",
-    activeTasks: 8,
-    completedTasks: 24,
-    status: "online",
-  },
-  {
-    id: 2,
-    name: "Alex Rivera",
-    email: "alex@flowsync.com",
-    avatar: "/man-1.jpg",
-    initials: "AR",
-    role: "Member",
-    department: "Engineering",
-    activeTasks: 5,
-    completedTasks: 18,
-    status: "online",
-  },
-  {
-    id: 3,
-    name: "Jordan Lee",
-    email: "jordan@flowsync.com",
-    avatar: "/man-2.jpg",
-    initials: "JL",
-    role: "Member",
-    department: "Design",
-    activeTasks: 6,
-    completedTasks: 31,
-    status: "away",
-  },
-  {
-    id: 4,
-    name: "Emma Wilson",
-    email: "emma@flowsync.com",
-    avatar: "/woman-2.jpg",
-    initials: "EW",
-    role: "Admin",
-    department: "Product",
-    activeTasks: 4,
-    completedTasks: 42,
-    status: "online",
-  },
-  {
-    id: 5,
-    name: "Michael Brown",
-    email: "michael@flowsync.com",
-    avatar: "/man-3.jpg",
-    initials: "MB",
-    role: "Member",
-    department: "Engineering",
-    activeTasks: 7,
-    completedTasks: 15,
-    status: "offline",
-  },
-  {
-    id: 6,
-    name: "Lisa Park",
-    email: "lisa@flowsync.com",
-    avatar: "",
-    initials: "LP",
-    role: "Member",
-    department: "Marketing",
-    activeTasks: 3,
-    completedTasks: 12,
-    status: "online",
-  },
-]
-
-const statusStyles = {
-  online: "bg-success",
-  away: "bg-warning",
-  offline: "bg-muted-foreground",
-}
+import { api } from "@/lib/api-client"
+import { useAuthStore } from "@/lib/auth-store"
 
 export default function TeamPage() {
+  const [loading, setLoading] = useState(true)
+  const [users, setUsers] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState("")
+  const { user: currentUser } = useAuthStore()
 
-  const filteredMembers = teamMembers.filter(
-    (member) =>
-      member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.department.toLowerCase().includes(searchQuery.toLowerCase()),
+  useEffect(() => {
+    fetchUsers()
+  }, [])
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true)
+      const { data } = await api.get("/users")
+      setUsers(data)
+    } catch (error) {
+      console.error("Failed to fetch users")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Frontend filter for immediate feedback, though API search exists
+  const filteredUsers = users.filter(
+    (u) =>
+      u.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.email?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -132,72 +73,84 @@ export default function TeamPage() {
         />
       </div>
 
-      {/* Team Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredMembers.map((member) => (
-          <Card key={member.id} className="card-3d">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={member.avatar || "/placeholder.svg"} />
-                      <AvatarFallback>{member.initials}</AvatarFallback>
-                    </Avatar>
-                    <span
-                      className={cn(
-                        "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card",
-                        statusStyles[member.status as keyof typeof statusStyles],
+      {/* Team Content */}
+      {loading ? (
+        <div className="flex justify-center p-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredUsers.map((member) => (
+            <Card key={member.id} className="card-3d hover:shadow-lg transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={member.avatar || ""} />
+                        <AvatarFallback>{getInitials(member.firstName, member.lastName)}</AvatarFallback>
+                      </Avatar>
+                      {/* Hardcoding status for now as backend doesn't track online status yet */}
+                      <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-success" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">{member.firstName} {member.lastName}</h3>
+                      <p className="text-sm text-muted-foreground">{member.role === 'ADMIN' ? 'Engineering' : 'Member'}</p>
+                    </div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem>View Profile</DropdownMenuItem>
+                      {currentUser?.role === 'ADMIN' && (
+                        <>
+                          <DropdownMenuItem>Edit Role</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive">Remove</DropdownMenuItem>
+                        </>
                       )}
-                    />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Mail className="h-4 w-4" />
+                  {member.email}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Badge variant={member.role === "ADMIN" ? "default" : "secondary"} className="gap-1">
+                    {member.role === "ADMIN" ? <Shield className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                    {member.role}
+                  </Badge>
+                </div>
+
+                {/* Mock Stats for now */}
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t text-center">
+                  <div>
+                    <p className="text-xl font-bold">{Math.floor(Math.random() * 10)}</p>
+                    <p className="text-xs text-muted-foreground">Active Tasks</p>
                   </div>
                   <div>
-                    <h3 className="font-semibold">{member.name}</h3>
-                    <p className="text-sm text-muted-foreground">{member.department}</p>
+                    <p className="text-xl font-bold">{Math.floor(Math.random() * 20) + 5}</p>
+                    <p className="text-xs text-muted-foreground">Completed</p>
                   </div>
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem>View Profile</DropdownMenuItem>
-                    <DropdownMenuItem>Edit Role</DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-destructive">Remove</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Mail className="h-4 w-4" />
-                {member.email}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Badge variant={member.role === "Admin" ? "default" : "secondary"} className="gap-1">
-                  {member.role === "Admin" ? <Shield className="h-3 w-3" /> : <User className="h-3 w-3" />}
-                  {member.role}
-                </Badge>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 pt-2 border-t">
-                <div>
-                  <p className="text-2xl font-bold">{member.activeTasks}</p>
-                  <p className="text-xs text-muted-foreground">Active Tasks</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{member.completedTasks}</p>
-                  <p className="text-xs text-muted-foreground">Completed</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+          {filteredUsers.length === 0 && (
+            <div className="col-span-full text-center py-12 text-muted-foreground">
+              No team members found.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
