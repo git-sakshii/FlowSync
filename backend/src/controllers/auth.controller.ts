@@ -32,6 +32,7 @@ const generateTokens = (userId: string) => {
 
 export const signup = async (req: Request, res: Response) => {
     try {
+        console.log('Signup request body:', req.body);
         const { email, password, firstName, lastName } = signupSchema.parse(req.body);
 
         const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -66,12 +67,17 @@ export const signup = async (req: Request, res: Response) => {
         if (error instanceof z.ZodError) {
             return res.status(400).json({ message: 'Invalid input', errors: error.errors });
         }
-        res.status(500).json({ message: 'Server error' });
+        console.error('Signup error:', error);
+        res.status(500).json({
+            message: error instanceof Error ? error.message : 'Server error',
+            details: error
+        });
     }
 };
 
 export const login = async (req: Request, res: Response) => {
     try {
+        console.log('Login request body:', req.body);
         const { email, password } = loginSchema.parse(req.body);
 
         const user = await prisma.user.findUnique({ where: { email } });
@@ -99,9 +105,14 @@ export const login = async (req: Request, res: Response) => {
         });
     } catch (error) {
         if (error instanceof z.ZodError) {
+            console.error('Login validation error:', error.errors);
             return res.status(400).json({ message: 'Invalid input', errors: error.errors });
         }
-        res.status(500).json({ message: 'Server error' });
+        console.error('Login error:', error);
+        res.status(500).json({
+            message: error instanceof Error ? error.message : 'Server error',
+            details: error
+        });
     }
 };
 

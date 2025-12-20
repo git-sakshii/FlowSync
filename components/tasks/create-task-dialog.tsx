@@ -43,6 +43,7 @@ const formSchema = z.object({
     priority: z.enum(["LOW", "MEDIUM", "HIGH"]),
     status: z.enum(["TODO", "IN_PROGRESS", "REVIEW", "DONE"]),
     projectId: z.string().min(1, "Project is required"),
+    assigneeId: z.string().optional(),
     dueDate: z.string().optional(),
 })
 
@@ -55,6 +56,7 @@ interface CreateTaskDialogProps {
 export function CreateTaskDialog({ onTaskCreated, defaultProjectId, trigger }: CreateTaskDialogProps) {
     const [open, setOpen] = useState(false)
     const [projects, setProjects] = useState<any[]>([])
+    const [projectMembers, setProjectMembers] = useState<any[]>([])
     const router = useRouter()
 
     useEffect(() => {
@@ -79,17 +81,43 @@ export function CreateTaskDialog({ onTaskCreated, defaultProjectId, trigger }: C
             priority: "MEDIUM",
             status: "TODO",
             projectId: defaultProjectId || "",
+            assigneeId: "",
             dueDate: ""
         },
     })
+
+    // Watch projectId to update members list
+    const selectedProjectId = form.watch("projectId")
+
+    useEffect(() => {
+        if (selectedProjectId && projects.length > 0) {
+            const project = projects.find(p => p.id === selectedProjectId)
+            if (project) {
+                setProjectMembers(project.members || [])
+            }
+        } else if (defaultProjectId) {
+            // If we have defaultId but projects aren't loaded yet, we wait. 
+            // Or if defaultId is passed, we might need to fetch that specific project if not in list
+            // But for now assuming projects list covers it or we fallback
+            const project = projects.find(p => p.id === defaultProjectId)
+            if (project) setProjectMembers(project.members || [])
+        }
+    }, [selectedProjectId, projects, defaultProjectId])
 
     const { user } = useAuthStore()
     const isLoading = form.formState.isSubmitting
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         try {
-            // Auto-assign to creator if no assignee logic exists in UI yet
-            const payload = { ...values, assigneeId: user?.id }
+            // Use selected assignee or default to creator if not specified (though now we have a selector)
+            // If the user selects nothing, it sends "" which might fail schema validation if we don't handle it
+            // Backend expects optional string.
+            const payload = {
+                ...values,
+                assigneeId: values.assigneeId || user?.id
+            }
+            if (!payload.assigneeId && user?.id) payload.assigneeId = user.id // Fallback ensure
+
             await api.post(`/projects/${values.projectId}/tasks`, payload)
             setOpen(false)
             form.reset()
@@ -208,6 +236,33 @@ export function CreateTaskDialog({ onTaskCreated, defaultProjectId, trigger }: C
                                 )}
                             />
                         </div>
+
+                        <FormField
+                            control={form.control}
+                            name="assigneeId"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Assignee</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select member" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {projectMembers.map((member: any) => (
+                                                <SelectItem key={member.user.id} value={member.user.id}>
+                                                    <div className="flex items-center gap-2">
+                                                        <span>{member.user.firstName} {member.user.lastName}</span>
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
                         <FormField
                             control={form.control}

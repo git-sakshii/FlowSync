@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { api } from "@/lib/api-client"
 import { useAuthStore } from "@/lib/auth-store"
+import { InviteMemberDialog } from "@/components/team/invite-member-dialog"
 
 export default function TeamPage() {
   const [loading, setLoading] = useState(true)
@@ -56,10 +57,7 @@ export default function TeamPage() {
           <h1 className="text-2xl font-bold tracking-tight">Team</h1>
           <p className="text-muted-foreground">Manage your team members and their roles.</p>
         </div>
-        <Button className="btn-3d">
-          <Plus className="mr-2 h-4 w-4" />
-          Invite Member
-        </Button>
+        <InviteMemberDialog />
       </div>
 
       {/* Search */}

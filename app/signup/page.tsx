@@ -58,8 +58,18 @@ export default function SignupPage() {
       toast.success("Account created!", { description: "You have successfully signed up." })
       router.push("/dashboard")
     } catch (err: any) {
-      const message = err.response?.data?.message || "Something went wrong. Please try again."
+      console.error("Signup error:", err)
+      let message = err.response?.data?.message || "Something went wrong. Please try again."
+      if (err.message && !err.response) {
+        message += ` (Network Error: ${err.message})`
+      } else if (err.response) {
+        message += ` (Status: ${err.response.status})`
+        if (err.response.data?.errors) {
+          message += ": " + err.response.data.errors.map((e: any) => e.message).join(", ")
+        }
+      }
       setError(message)
+      toast.error(message)
     } finally {
       setIsLoading(false)
     }

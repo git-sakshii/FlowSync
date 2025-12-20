@@ -179,3 +179,27 @@ export const searchUsers = async (req: any, res: Response) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+export const inviteUser = async (req: any, res: Response) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ message: 'Email is required' });
+
+        const existingUser = await prisma.user.findUnique({
+            where: { email },
+            select: { id: true, firstName: true, lastName: true, email: true }
+        });
+
+        if (existingUser) {
+            return res.json({ message: 'User exists', existingUser });
+        }
+
+        // Mock email sending
+        // In a real app, use Nodemailer/Resend here
+        console.log(`[Mock Email] Sending invitation to ${email}`);
+
+        res.json({ message: 'Invitation sent' });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
