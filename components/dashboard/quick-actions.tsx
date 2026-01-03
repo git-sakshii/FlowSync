@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button"
 import { Plus, FolderPlus, UserPlus, FileText } from "lucide-react"
 import { CreateProjectDialog } from "@/components/projects/create-project-dialog"
 import { CreateTaskDialog } from "@/components/tasks/create-task-dialog"
+import { InviteMemberDialog } from "@/components/team/invite-member-dialog"
+import { CreateReportDialog } from "@/components/reports/create-report-dialog"
 
 export function QuickActions() {
   return (
@@ -19,14 +21,22 @@ export function QuickActions() {
 
       <CreateProjectDialog />
 
-      <Button variant="outline" className="bg-transparent">
-        <UserPlus className="mr-2 h-4 w-4" />
-        Invite Member
-      </Button>
-      <Button variant="outline" className="bg-transparent">
-        <FileText className="mr-2 h-4 w-4" />
-        Create Report
-      </Button>
+      <InviteMemberDialog
+        trigger={
+          <Button variant="outline" className="bg-transparent">
+            <UserPlus className="mr-2 h-4 w-4" />
+            Invite Member
+          </Button>
+        }
+      />
+      <CreateReportDialog
+        trigger={
+          <Button variant="outline" className="bg-transparent">
+            <FileText className="mr-2 h-4 w-4" />
+            Create Report
+          </Button>
+        }
+      />
     </div>
   )
 }

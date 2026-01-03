@@ -12,11 +12,16 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "tsx prisma/seed.ts"
   },
-  "keywords": ["workflow", "saas", "api"],
+  "keywords": [
+    "workflow",
+    "saas",
+    "api"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
     "@prisma/client": "^6.1.0",
+    "@sendgrid/mail": "^8.1.6",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

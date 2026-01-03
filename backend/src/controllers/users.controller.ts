@@ -180,6 +180,8 @@ export const searchUsers = async (req: any, res: Response) => {
     }
 };
 
+import { sendInviteEmail } from '../services/email.service';
+
 export const inviteUser = async (req: any, res: Response) => {
     try {
         const { email } = req.body;
@@ -194,12 +196,16 @@ export const inviteUser = async (req: any, res: Response) => {
             return res.json({ message: 'User exists', existingUser });
         }
 
-        // Mock email sending
-        // In a real app, use Nodemailer/Resend here
-        console.log(`[Mock Email] Sending invitation to ${email}`);
+        // Send real email via Resend
+        const result = await sendInviteEmail(email);
+
+        if (!result.success) {
+            return res.status(500).json({ message: 'Failed to send invitation email' });
+        }
 
         res.json({ message: 'Invitation sent' });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: 'Server error' });
     }
 };

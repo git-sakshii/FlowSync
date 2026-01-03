@@ -4,34 +4,60 @@ import prisma from '../config/database';
 export const getTaskCompletionTrend = async (req: any, res: Response) => {
     try {
         const userId = req.user.id;
-        // For demo/simplicity, we'll return mock data or simple aggregation
-        // In production, you'd use raw SQL queries for time-series aggregation
 
-        // Example mock data matching frontend structure (Week 1, Week 2...)
-        // Real implementation would aggregate `createdAt` and `updatedAt` where status=DONE
+        // Get tasks from the last 6 weeks
+        const sixWeeksAgo = new Date();
+        sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42);
 
-        // We can fetch actual counts for basic verification
-        const totalCompleted = await prisma.task.count({
+        const tasks = await prisma.task.findMany({
             where: {
-                status: 'DONE',
+                createdAt: { gte: sixWeeksAgo },
                 OR: [
                     { assigneeId: userId },
                     { project: { members: { some: { userId } } } }
                 ]
+            },
+            select: {
+                createdAt: true,
+                status: true,
+                updatedAt: true
             }
         });
 
-        const data = [
-            { name: "Week 1", completed: 18, created: 24 },
-            { name: "Week 2", completed: 22, created: 20 },
-            { name: "Week 3", completed: 28, created: 32 },
-            { name: "Week 4", completed: 35, created: 28 },
-            { name: "Week 5", completed: 30, created: 25 },
-            { name: "Week 6", completed: Math.max(42, totalCompleted), created: 38 }, // Use real count slightly
-        ];
+        // Group tasks by week
+        const weekData: Record<string, { completed: number; created: number }> = {};
+
+        for (let i = 5; i >= 0; i--) {
+            const weekStart = new Date();
+            weekStart.setDate(weekStart.getDate() - (i * 7) - 6);
+            const weekEnd = new Date();
+            weekEnd.setDate(weekEnd.getDate() - (i * 7));
+
+            const weekLabel = `Week ${6 - i}`;
+            weekData[weekLabel] = { completed: 0, created: 0 };
+
+            tasks.forEach(task => {
+                const createdDate = new Date(task.createdAt);
+                if (createdDate >= weekStart && createdDate <= weekEnd) {
+                    weekData[weekLabel].created++;
+                }
+                if (task.status === 'DONE') {
+                    const updatedDate = new Date(task.updatedAt);
+                    if (updatedDate >= weekStart && updatedDate <= weekEnd) {
+                        weekData[weekLabel].completed++;
+                    }
+                }
+            });
+        }
+
+        const data = Object.entries(weekData).map(([name, values]) => ({
+            name,
+            ...values
+        }));
 
         res.json(data);
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: 'Server error' });
     }
 };

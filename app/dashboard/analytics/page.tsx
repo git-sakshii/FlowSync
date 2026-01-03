@@ -90,17 +90,20 @@ export default function AnalyticsPage() {
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={taskCompletionData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="name" className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} />
-                  <YAxis className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" tick={{ fill: "hsl(var(--foreground))" }} fontSize={12} />
+                  <YAxis tick={{ fill: "hsl(var(--foreground))" }} fontSize={12} />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "hsl(var(--card))",
                       borderColor: "hsl(var(--border))",
                       borderRadius: "8px",
+                      color: "hsl(var(--foreground))",
                     }}
+                    labelStyle={{ color: "hsl(var(--foreground))" }}
+                    itemStyle={{ color: "hsl(var(--foreground))" }}
                   />
-                  <Legend />
+                  <Legend wrapperStyle={{ color: "hsl(var(--foreground))" }} />
                   <Line
                     type="monotone"
                     dataKey="completed"
@@ -133,20 +136,23 @@ export default function AnalyticsPage() {
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={projectProgressData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis type="number" domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))" }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis type="number" domain={[0, 100]} tick={{ fill: "hsl(var(--foreground))" }} fontSize={12} />
                   <YAxis
                     dataKey="name"
                     type="category"
                     width={120}
-                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                    tick={{ fill: "hsl(var(--foreground))", fontSize: 12 }}
                   />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "hsl(var(--card))",
                       borderColor: "hsl(var(--border))",
                       borderRadius: "8px",
+                      color: "hsl(var(--foreground))",
                     }}
+                    labelStyle={{ color: "hsl(var(--foreground))" }}
+                    itemStyle={{ color: "hsl(var(--foreground))" }}
                     formatter={(value) => [`${value}%`, "Progress"]}
                   />
                   <Bar dataKey="progress" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
@@ -184,9 +190,12 @@ export default function AnalyticsPage() {
                       backgroundColor: "hsl(var(--card))",
                       borderColor: "hsl(var(--border))",
                       borderRadius: "8px",
+                      color: "hsl(var(--foreground))",
                     }}
+                    labelStyle={{ color: "hsl(var(--foreground))" }}
+                    itemStyle={{ color: "hsl(var(--foreground))" }}
                   />
-                  <Legend />
+                  <Legend wrapperStyle={{ color: "hsl(var(--foreground))" }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
