@@ -8,6 +8,7 @@ yarn.lock
 dist/
 build/
 backend/node_modules
+backend/dist
 
 # Environment variables
 .env

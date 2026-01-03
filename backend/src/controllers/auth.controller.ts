@@ -19,13 +19,17 @@ const loginSchema = z.object({
 
 // Helper to generate tokens
 const generateTokens = (userId: string) => {
-    const accessToken = jwt.sign({ userId }, process.env.JWT_ACCESS_SECRET!, {
-        expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
-    });
+    const accessToken = jwt.sign(
+        { userId },
+        process.env.JWT_ACCESS_SECRET!,
+        { expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m' } as jwt.SignOptions
+    );
 
-    const refreshToken = jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET!, {
-        expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
-    });
+    const refreshToken = jwt.sign(
+        { userId },
+        process.env.JWT_REFRESH_SECRET!,
+        { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' } as jwt.SignOptions
+    );
 
     return { accessToken, refreshToken };
 };
