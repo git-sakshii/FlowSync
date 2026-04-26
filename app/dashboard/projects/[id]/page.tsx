@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { getInitials } from "@/lib/utils"
 import { CreateTaskDialog } from "@/components/tasks/create-task-dialog"
 import { InviteMemberDialog } from "@/components/projects/invite-member-dialog"
+import { TaskDetailPanel } from "@/components/tasks/task-detail-panel"
 import { Loader2, Calendar, ArrowLeft, UserPlus, Users, Clock } from "lucide-react"
 
 interface Project {
@@ -35,6 +36,7 @@ export default function ProjectDetailsPage() {
     const router = useRouter()
     const [project, setProject] = useState<Project | null>(null)
     const [loading, setLoading] = useState(true)
+    const [detailedTask, setDetailedTask] = useState<any | null>(null)
 
     const fetchProject = async () => {
         try {
@@ -184,18 +186,44 @@ export default function ProjectDetailsPage() {
                                 <p className="text-center text-muted-foreground py-8">No tasks yet.</p>
                             ) : (
                                 project.tasks.map((task: any) => (
-                                    <div key={task.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
+                                    <div 
+                                        key={task.id} 
+                                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                                        onClick={() => setDetailedTask(task)}
+                                    >
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-2 h-2 rounded-full ${task.status === 'DONE' ? 'bg-success' : 'bg-primary'}`} />
+                                            <div className={cn(
+                                                "w-2 h-2 rounded-full",
+                                                task.status === 'DONE' && "bg-success",
+                                                task.status === 'IN_PROGRESS' && "bg-primary",
+                                                task.status === 'REVIEW' && "bg-warning",
+                                                task.status === 'TODO' && "bg-muted-foreground"
+                                            )} />
                                             <span className={task.status === 'DONE' ? 'line-through text-muted-foreground' : 'font-medium'}>{task.title}</span>
                                         </div>
                                         <div className="flex items-center gap-4 text-sm">
+                                            {task.assignee && (
+                                                <Avatar className="h-6 w-6">
+                                                    <AvatarImage src={task.assignee.avatar || ""} />
+                                                    <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                                                        {getInitials(task.assignee.firstName, task.assignee.lastName)}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            )}
                                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${task.priority === 'HIGH' ? 'bg-destructive/10 text-destructive' :
                                                 task.priority === 'MEDIUM' ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'
                                                 }`}>
                                                 {task.priority}
                                             </span>
-                                            {task.dueDate && <span className="text-muted-foreground">{new Date(task.dueDate).toLocaleDateString()}</span>}
+                                            {task.dueDate && (
+                                                <span className={cn(
+                                                    "flex items-center gap-1",
+                                                    new Date(task.dueDate) < new Date() && task.status !== "DONE" ? "text-destructive font-medium" : "text-muted-foreground"
+                                                )}>
+                                                    <Calendar className="h-3.5 w-3.5" />
+                                                    {new Date(task.dueDate).toLocaleDateString()}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 ))
@@ -258,6 +286,18 @@ export default function ProjectDetailsPage() {
                     </div>
                 </TabsContent>
             </Tabs>
+
+            {/* Task Detail Panel */}
+            <TaskDetailPanel
+                open={!!detailedTask}
+                onOpenChange={(open) => !open && setDetailedTask(null)}
+                task={detailedTask}
+                onTaskUpdated={() => {
+                    fetchProject()
+                    const updated = project?.tasks?.find((t: any) => t.id === detailedTask?.id)
+                    if (updated) setDetailedTask(updated)
+                }}
+            />
         </div>
     )
 }

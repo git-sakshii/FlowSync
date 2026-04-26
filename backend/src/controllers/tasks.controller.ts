@@ -15,9 +15,11 @@ const createTaskSchema = z.object({
 
 const updateTaskSchema = z.object({
     title: z.string().min(1).optional(),
-    description: z.string().optional(),
+    description: z.string().optional().nullable(),
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
+    status: z.enum(['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE']).optional(),
     dueDate: z.string().optional().nullable(),
+    assigneeId: z.string().optional().nullable(),
 });
 
 export const createTask = async (req: any, res: Response) => {
@@ -112,26 +114,65 @@ export const updateTask = async (req: any, res: Response) => {
         const { id } = req.params;
         const data = updateTaskSchema.parse(req.body);
 
+        // Fetch task with project owner for permission check
+        const existingTask = await prisma.task.findUnique({
+            where: { id },
+            include: { project: { select: { ownerId: true } } }
+        });
+
+        if (!existingTask) return res.status(404).json({ message: 'Task not found' });
+
+        // Permission check: only assignee, project owner, or admin can update
+        const isAssignee = existingTask.assigneeId === req.user.id;
+        const isOwner = existingTask.project.ownerId === req.user.id;
+        const isAdmin = req.user.role === 'ADMIN';
+
+        if (!isAssignee && !isOwner && !isAdmin) {
+            return res.status(403).json({ message: 'Not authorized to update this task' });
+        }
+
+        const oldStatus = existingTask.status;
+
         const task = await prisma.task.update({
             where: { id },
             data: {
                 ...data,
                 dueDate: data.dueDate ? new Date(data.dueDate) : data.dueDate,
             },
+            include: {
+                assignee: { select: { id: true, firstName: true, lastName: true, avatar: true } },
+                project: { select: { id: true, name: true, ownerId: true } }
+            }
         });
 
-        await logActivity({
-            type: 'task-update',
-            action: 'updated',
-            target: task.title,
-            userId: req.user.id,
-            projectId: task.projectId,
-            taskId: task.id,
-            details: 'Updated task details'
-        });
+        // Log status change if status was updated
+        if (data.status && data.status !== oldStatus) {
+            await logActivity({
+                type: 'status-change',
+                action: 'moved',
+                target: task.title,
+                userId: req.user.id,
+                projectId: task.projectId,
+                taskId: task.id,
+                details: `${oldStatus} → ${data.status}`
+            });
+        } else {
+            await logActivity({
+                type: 'task-update',
+                action: 'updated',
+                target: task.title,
+                userId: req.user.id,
+                projectId: task.projectId,
+                taskId: task.id,
+                details: 'Updated task details'
+            });
+        }
 
         res.json(task);
     } catch (error) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ message: 'Invalid input', errors: error.errors });
+        }
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -163,23 +204,36 @@ export const deleteTask = async (req: any, res: Response) => {
 export const updateTaskStatus = async (req: any, res: Response) => {
     try {
         const { id } = req.params;
-        const { status, columnId } = req.body; // columnId might be passed from frontend dnd
+        const { status, columnId } = req.body;
 
-        // Support both frontend column IDs (lowercase) and DB Enums (uppercase)
         const dbStatus = status || (columnId ? columnId.toUpperCase().replace('-', '_') : undefined);
 
         if (!['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'].includes(dbStatus)) {
             return res.status(400).json({ message: 'Invalid status' });
         }
 
-        const oldTask = await prisma.task.findUnique({ where: { id } });
+        const oldTask = await prisma.task.findUnique({
+            where: { id },
+            include: { project: { select: { ownerId: true } } }
+        });
+
+        if (!oldTask) return res.status(404).json({ message: 'Task not found' });
+
+        // Permission check: only assignee, project owner, or admin can update status
+        const isAssignee = oldTask.assigneeId === req.user.id;
+        const isOwner = oldTask.project.ownerId === req.user.id;
+        const isAdmin = req.user.role === 'ADMIN';
+
+        if (!isAssignee && !isOwner && !isAdmin) {
+            return res.status(403).json({ message: 'Not authorized to update this task' });
+        }
 
         const task = await prisma.task.update({
             where: { id },
             data: { status: dbStatus }
         });
 
-        if (oldTask && oldTask.status !== dbStatus) {
+        if (oldTask.status !== dbStatus) {
             await logActivity({
                 type: 'status-change',
                 action: 'moved',
@@ -190,7 +244,6 @@ export const updateTaskStatus = async (req: any, res: Response) => {
                 details: `${oldTask.status} → ${task.status}`
             });
 
-            // Notify assignee if someone else moved it
             if (task.assigneeId && task.assigneeId !== req.user.id) {
                 await createNotification({
                     type: 'status-change',

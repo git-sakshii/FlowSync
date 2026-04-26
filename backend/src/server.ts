@@ -50,6 +50,7 @@ app.use('/api', require('./routes/invite.routes').default);
 app.use('/api/users', require('./routes/users.routes').default);
 app.use('/api/projects', require('./routes/projects.routes').default);
 app.use('/api', require('./routes/tasks.routes').default); // Has /projects/:id/tasks and /tasks direct routes
+app.use('/api/tasks/:id/comments', require('./routes/comments.routes').default);
 app.use('/api/activity', require('./routes/activity.routes').default);
 app.use('/api/notifications', require('./routes/notifications.routes').default);
 app.use('/api/analytics', require('./routes/analytics.routes').default);

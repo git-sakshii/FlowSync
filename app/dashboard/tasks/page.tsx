@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { api } from "@/lib/api-client"
 import { CreateTaskDialog } from "@/components/tasks/create-task-dialog"
 import { EditTaskDialog } from "@/components/tasks/edit-task-dialog"
+import { TaskDetailPanel } from "@/components/tasks/task-detail-panel"
 import { toast } from "sonner"
 
 export default function TasksPage() {
@@ -20,8 +21,11 @@ export default function TasksPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [priorityFilter, setPriorityFilter] = useState("all")
+  const [sortBy, setSortBy] = useState("dueDate")
   const [selectedTasks, setSelectedTasks] = useState<string[]>([])
   const [editingTask, setEditingTask] = useState<any | null>(null)
+  const [detailedTask, setDetailedTask] = useState<any | null>(null)
 
   const fetchTasks = async () => {
     try {
@@ -42,8 +46,21 @@ export default function TasksPage() {
 
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = statusFilter === "all" || task.status === statusFilter.toUpperCase() // API returns uppercase
-    return matchesSearch && matchesStatus
+    const matchesStatus = statusFilter === "all" || task.status === statusFilter.toUpperCase()
+    const matchesPriority = priorityFilter === "all" || task.priority === priorityFilter.toUpperCase()
+    return matchesSearch && matchesStatus && matchesPriority
+  }).sort((a, b) => {
+    if (sortBy === "dueDate") {
+      if (!a.dueDate) return 1
+      if (!b.dueDate) return -1
+      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+    }
+    if (sortBy === "priority") {
+      const pMap: Record<string, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 }
+      return (pMap[b.priority] || 0) - (pMap[a.priority] || 0)
+    }
+    // "updatedAt" (recently updated)
+    return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
   })
 
   const toggleTask = (id: string) => {
@@ -124,6 +141,27 @@ export default function TasksPage() {
             <SelectItem value="done">Done</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+          <SelectTrigger className="w-full sm:w-[150px]">
+            <SelectValue placeholder="Priority" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Priorities</SelectItem>
+            <SelectItem value="high">High</SelectItem>
+            <SelectItem value="medium">Medium</SelectItem>
+            <SelectItem value="low">Low</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="w-full sm:w-[150px]">
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="dueDate">Due Date</SelectItem>
+            <SelectItem value="priority">Priority</SelectItem>
+            <SelectItem value="updatedAt">Recently Updated</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Table */}
@@ -160,8 +198,8 @@ export default function TasksPage() {
                 </TableRow>
               ) : (
                 filteredTasks.map((task) => (
-                  <TableRow key={task.id} className={cn(task.status === 'DONE' && "opacity-60")}>
-                    <TableCell>
+                  <TableRow key={task.id} className={cn("cursor-pointer hover:bg-muted/50 transition-colors", task.status === 'DONE' && "opacity-60")} onClick={() => setDetailedTask(task)}>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox checked={selectedTasks.includes(task.id)} onCheckedChange={() => toggleTask(task.id)} />
                     </TableCell>
                     <TableCell>
@@ -193,12 +231,15 @@ export default function TasksPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <div className={cn(
+                        "flex items-center gap-1 text-sm font-medium",
+                        new Date(task.dueDate) < new Date() && task.status !== "DONE" ? "text-destructive" : "text-muted-foreground"
+                      )}>
                         <Calendar className="h-3.5 w-3.5" />
                         {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'None'}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -207,6 +248,17 @@ export default function TasksPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => setEditingTask(task)}>Edit</DropdownMenuItem>
+                          {task.status !== 'DONE' && (
+                            <DropdownMenuItem onClick={async () => {
+                                try {
+                                    await api.put(`/tasks/${task.id}/status`, { status: "DONE" });
+                                    toast.success("Task marked as done");
+                                    fetchTasks();
+                                } catch(err) {
+                                    toast.error("Failed to update status");
+                                }
+                            }}>Mark as Done</DropdownMenuItem>
+                          )}
                           <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTask(task.id)}>Delete</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -224,6 +276,19 @@ export default function TasksPage() {
         onOpenChange={(open) => !open && setEditingTask(null)}
         task={editingTask}
         onTaskUpdated={fetchTasks}
+      />
+
+      {/* Task Detail Panel */}
+      <TaskDetailPanel
+        open={!!detailedTask}
+        onOpenChange={(open) => !open && setDetailedTask(null)}
+        task={detailedTask}
+        onTaskUpdated={() => {
+            fetchTasks()
+            // optionally refresh the detailed task object so the panel updates immediately
+            const updated = tasks.find(t => t.id === detailedTask?.id)
+            if (updated) setDetailedTask(updated)
+        }}
       />
     </div>
   )

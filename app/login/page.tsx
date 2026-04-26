@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AuthLayout } from "@/components/auth/auth-layout"
@@ -14,7 +14,7 @@ import { api } from "@/lib/api-client"
 import { useAuthStore } from "@/lib/auth-store"
 import { toast } from "sonner"
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const inviteToken = searchParams.get("invite")
@@ -122,5 +122,17 @@ export default function LoginPage() {
         </p>
       </form>
     </AuthLayout>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   )
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { ActivityFeed } from "@/components/dashboard/activity-feed"
@@ -8,11 +8,11 @@ import { QuickActions } from "@/components/dashboard/quick-actions"
 import { ProjectOverview } from "@/components/dashboard/project-overview"
 import { UpcomingTasks } from "@/components/dashboard/upcoming-tasks"
 import { InviteAcceptedDialog } from "@/components/projects/invite-accepted-dialog"
-import { FolderKanban, CheckSquare, CheckCircle, Clock } from "lucide-react"
+import { FolderKanban, CheckSquare, CheckCircle, Clock, Loader2 } from "lucide-react"
 import { api } from "@/lib/api-client"
 import { useAuthStore } from "@/lib/auth-store"
 
-export default function DashboardPage() {
+function DashboardContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuthStore()
@@ -105,5 +105,17 @@ export default function DashboardPage() {
         }}
       />
     </div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   )
 }

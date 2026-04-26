@@ -51,6 +51,7 @@ model User {
   activities    Activity[]
   notifications Notification[]
   ownedProjects Project[]
+  comments      Comment[]
 }
 
 model Project {
@@ -102,6 +103,7 @@ model Task {
   deletedAt   DateTime?  // Soft delete
   
   activities  Activity[]
+  comments    Comment[]
 }
 
 model Activity {
@@ -151,3 +153,15 @@ model ProjectInvite {
 
   @@unique([email, projectId])
 }
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
