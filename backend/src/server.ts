@@ -26,19 +26,27 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Rate limiting (basic setup)
+// Rate limiting (global)
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 1000 // limit each IP to 1000 requests per windowMs
 });
 app.use(limiter);
 
+// Stricter rate limiting for auth routes (prevent brute-force)
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 20, // 20 auth attempts per 15 min
+    message: { message: 'Too many authentication attempts. Please try again later.' }
+});
+
 // Routes
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api', require('./routes/invite.routes').default);
 app.use('/api/users', require('./routes/users.routes').default);
 app.use('/api/projects', require('./routes/projects.routes').default);
 app.use('/api', require('./routes/tasks.routes').default); // Has /projects/:id/tasks and /tasks direct routes

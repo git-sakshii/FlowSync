@@ -29,16 +29,17 @@ export default function AnalyticsPage() {
   const [taskDistributionData, setTaskDistributionData] = useState<any[]>([])
   const [workloadData, setWorkloadData] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [period, setPeriod] = useState("30d")
 
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
         setIsLoading(true)
         const [trendsRes, progressRes, distributionRes, workloadRes] = await Promise.all([
-          api.get("/analytics/tasks/completion"),
-          api.get("/analytics/projects/progress"),
-          api.get("/analytics/tasks/distribution"),
-          api.get("/analytics/team/workload")
+          api.get(`/analytics/tasks/completion?period=${period}`),
+          api.get(`/analytics/projects/progress?period=${period}`),
+          api.get(`/analytics/tasks/distribution?period=${period}`),
+          api.get(`/analytics/team/workload?period=${period}`)
         ])
 
         setTaskCompletionData(trendsRes.data)
@@ -52,7 +53,7 @@ export default function AnalyticsPage() {
       }
     }
     fetchAnalytics()
-  }, [])
+  }, [period])
 
   if (isLoading) {
     return <div className="flex h-[50vh] items-center justify-center">Loading analytics...</div>
@@ -65,7 +66,7 @@ export default function AnalyticsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
           <p className="text-muted-foreground">Insights and metrics for your projects and team.</p>
         </div>
-        <Select defaultValue="30d">
+        <Select value={period} onValueChange={setPeriod}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Select period" />
           </SelectTrigger>

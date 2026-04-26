@@ -25,15 +25,20 @@ export const getProjectActivity = async (req: any, res: Response) => {
 export const getUserActivity = async (req: any, res: Response) => {
     try {
         const userId = req.user.id;
-        const { limit = 50 } = req.query;
+        const page = Math.max(1, parseInt(req.query.page as string) || 1);
+        const limit = Math.min(50, parseInt(req.query.limit as string) || 10);
+        const skip = (page - 1) * limit;
 
         const activities = await prisma.activity.findMany({
             where: { userId },
             include: {
+                user: { select: { id: true, firstName: true, lastName: true, avatar: true } },
                 project: { select: { id: true, name: true } },
+                task: { select: { id: true, title: true } },
             },
             orderBy: { createdAt: 'desc' },
-            take: Number(limit)
+            skip,
+            take: limit
         });
 
         res.json(activities);

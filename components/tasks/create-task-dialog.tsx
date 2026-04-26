@@ -50,11 +50,16 @@ const formSchema = z.object({
 interface CreateTaskDialogProps {
     onTaskCreated?: () => void
     defaultProjectId?: string
+    defaultStatus?: string
     trigger?: React.ReactNode
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
 }
 
-export function CreateTaskDialog({ onTaskCreated, defaultProjectId, trigger }: CreateTaskDialogProps) {
-    const [open, setOpen] = useState(false)
+export function CreateTaskDialog({ onTaskCreated, defaultProjectId, defaultStatus, trigger, open: controlledOpen, onOpenChange: controlledOnOpenChange }: CreateTaskDialogProps) {
+    const [internalOpen, setInternalOpen] = useState(false)
+    const open = controlledOpen !== undefined ? controlledOpen : internalOpen
+    const setOpen = controlledOnOpenChange || setInternalOpen
     const [projects, setProjects] = useState<any[]>([])
     const [projectMembers, setProjectMembers] = useState<any[]>([])
     const router = useRouter()
@@ -79,7 +84,7 @@ export function CreateTaskDialog({ onTaskCreated, defaultProjectId, trigger }: C
             title: "",
             description: "",
             priority: "MEDIUM",
-            status: "TODO",
+            status: (defaultStatus as "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE") || "TODO",
             projectId: defaultProjectId || "",
             assigneeId: "",
             dueDate: ""

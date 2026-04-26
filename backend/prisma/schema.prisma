@@ -36,6 +36,10 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   
+  // Password Reset
+  resetToken       String?
+  resetTokenExpiry DateTime?
+
   // Preferences
   theme         String    @default("system") // light, dark, system
   emailNotif    Boolean   @default(true)
@@ -63,6 +67,7 @@ model Project {
   members     ProjectMember[]
   tasks       Task[]
   activities  Activity[]
+  invites     ProjectInvite[]
 }
 
 model ProjectMember {
@@ -131,4 +136,18 @@ model Notification {
   data      Json?    // Optional metadata (e.g. { taskId: "..." })
   
   createdAt DateTime @default(now())
+}
+
+model ProjectInvite {
+  id        String   @id @default(uuid())
+  email     String
+  token     String   @unique
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  invitedBy String   // userId of who invited
+  status    String   @default("pending") // pending | accepted | expired
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([email, projectId])
 }

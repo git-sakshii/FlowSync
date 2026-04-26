@@ -131,6 +131,7 @@ export default function ProjectsPage() {
                 name: m.user.firstName,
                 avatar: m.user.avatar
               }))}
+              onProjectUpdated={fetchProjects}
             />
           ))}
         </div>

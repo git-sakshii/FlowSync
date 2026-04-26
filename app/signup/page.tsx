@@ -2,26 +2,47 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { AuthLayout } from "@/components/auth/auth-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Eye, EyeOff, Loader2, Check } from "lucide-react"
+import { Eye, EyeOff, Loader2, Check, Users } from "lucide-react"
 import { api } from "@/lib/api-client"
 import { useAuthStore } from "@/lib/auth-store"
 import { toast } from "sonner"
 
 export default function SignupPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const inviteToken = searchParams.get("invite")
   const { login } = useAuthStore()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [inviteEmail, setInviteEmail] = useState("")
+
+  // If there's an invite token, fetch the invite details to pre-fill email
+  useEffect(() => {
+    if (inviteToken) {
+      const fetchInvite = async () => {
+        try {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/invite/${inviteToken}`)
+          const data = await res.json()
+          if (res.ok && data.email) {
+            setInviteEmail(data.email)
+          }
+        } catch (err) {
+          // Silently fail — they can still type their email
+        }
+      }
+      fetchInvite()
+    }
+  }, [inviteToken])
 
   const passwordRequirements = [
     { label: "At least 8 characters", met: password.length >= 8 },
@@ -55,6 +76,20 @@ export default function SignupPage() {
       })
 
       login(data.user, data.tokens)
+
+      // If there's an invite token, accept the invite after signup
+      if (inviteToken) {
+        try {
+          const { data: inviteData } = await api.post(`/invite/${inviteToken}/accept`)
+          toast.success("Account created!", { description: "You've joined the project!" })
+          router.push(`/dashboard?joined=${inviteData.projectId}&projectName=${encodeURIComponent(inviteData.projectName)}`)
+          return
+        } catch (inviteErr: any) {
+          console.error("Invite accept failed:", inviteErr)
+          toast.warning(inviteErr.response?.data?.message || "Account created but could not accept invitation")
+        }
+      }
+
       toast.success("Account created!", { description: "You have successfully signed up." })
       router.push("/dashboard")
     } catch (err: any) {
@@ -76,8 +111,16 @@ export default function SignupPage() {
   }
 
   return (
-    <AuthLayout title="Create your account" description="Start your 14-day free trial. No credit card required.">
+    <AuthLayout title="Create your account" description={inviteToken ? "Sign up to join the project you've been invited to." : "Start your 14-day free trial. No credit card required."}>
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Invite banner */}
+        {inviteToken && (
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 text-primary text-sm">
+            <Users className="h-4 w-4 shrink-0" />
+            <span>You've been invited to a project. Create an account to join.</span>
+          </div>
+        )}
+
         {error && <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>}
 
         <div className="grid grid-cols-2 gap-4">
@@ -93,7 +136,19 @@ export default function SignupPage() {
 
         <div className="space-y-2">
           <Label htmlFor="email">Work email</Label>
-          <Input name="email" id="email" type="email" placeholder="name@company.com" required className="h-11" />
+          <Input
+            name="email"
+            id="email"
+            type="email"
+            placeholder="name@company.com"
+            required
+            className="h-11"
+            defaultValue={inviteEmail}
+            readOnly={!!inviteEmail}
+          />
+          {inviteEmail && (
+            <p className="text-xs text-muted-foreground">This email was pre-filled from the invitation</p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -145,12 +200,15 @@ export default function SignupPage() {
 
         <Button type="submit" className="w-full h-11 btn-3d" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Create Account
+          {inviteToken ? "Create Account & Join Project" : "Create Account"}
         </Button>
 
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link href="/login" className="text-primary hover:underline font-medium">
+          <Link
+            href={inviteToken ? `/login?invite=${inviteToken}` : "/login"}
+            className="text-primary hover:underline font-medium"
+          >
             Sign in
           </Link>
         </p>

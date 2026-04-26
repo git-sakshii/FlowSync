@@ -35,14 +35,7 @@ export default function ActivityPage() {
     try {
       if (!append) setIsLoading(true)
       const { data } = await api.get(`/activity/me?page=${currentPage}&limit=10`)
-      // Backend returns { activities: [], total, page, pages } usually, or just array
-      // Based on controller, it seems to return array directly? ActivityController returns timeline array.
-      // Wait, let's check backend implementation.
-      // ActivityController.getTimeline returns `res.json(timeline)` which is an array.
-      // So no pagination metadata? 
-      // The current controller fetches ALL? No, `prisma.activity.findMany({ take: 20 })`
-      // It limits to 50 or similar.
-      // I should update backend to support pagination if needed, but for now let's assume it returns a list.
+      // Backend returns paginated array based on page/limit params
 
       const newActivities = data.map((a: any) => ({
         id: a.id,
@@ -109,13 +102,12 @@ export default function ActivityPage() {
     const matchesSearch =
       (activity.target?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
       (activity.user?.name?.toLowerCase() || "").includes(searchQuery.toLowerCase())
-    // Backend types might be different from frontend filter values
-    const matchesType = typeFilter === "all" || activity.type === typeFilter
-    return matchesSearch
+    const matchesType = typeFilter === "all" || activity.type?.toLowerCase().includes(typeFilter)
+    return matchesSearch && matchesType
   })
 
   // Group activities by date
-  const groupedActivities = filteredActivities.reduce(
+  const groupedActivities: Record<string, typeof activities> = filteredActivities.reduce(
     (groups, activity) => {
       const date = activity.date
       if (!groups[date]) {
@@ -152,11 +144,11 @@ export default function ActivityPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Activity</SelectItem>
-            <SelectItem value="task-complete">Completions</SelectItem>
-            <SelectItem value="comment">Comments</SelectItem>
-            <SelectItem value="status-change">Status Changes</SelectItem>
+            <SelectItem value="complete">Completions</SelectItem>
+            <SelectItem value="create">Creations</SelectItem>
+            <SelectItem value="status">Status Changes</SelectItem>
             <SelectItem value="assignment">Assignments</SelectItem>
-            <SelectItem value="deadline">Deadlines</SelectItem>
+            <SelectItem value="delete">Deletions</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -226,11 +218,13 @@ export default function ActivityPage() {
       </div>
 
       {/* Load more */}
-      <div className="text-center">
-        <Button variant="outline" className="bg-transparent">
-          Load More Activity
-        </Button>
-      </div>
+      {hasMore && (
+        <div className="text-center">
+          <Button variant="outline" className="bg-transparent" onClick={handleLoadMore}>
+            Load More Activity
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

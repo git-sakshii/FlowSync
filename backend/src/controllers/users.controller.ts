@@ -164,17 +164,39 @@ export const searchUsers = async (req: any, res: Response) => {
 
         const users = await prisma.user.findMany({
             where,
-            take: 10,
+            take: 20,
             select: {
                 id: true,
                 firstName: true,
                 lastName: true,
                 avatar: true,
                 email: true,
+                role: true,
+                _count: {
+                    select: {
+                        assignedTasks: true
+                    }
+                },
+                assignedTasks: {
+                    where: { deletedAt: null },
+                    select: { status: true }
+                }
             },
         });
 
-        res.json(users);
+        // Compute real stats per user
+        const usersWithStats = users.map(user => {
+            const activeTasks = user.assignedTasks.filter(t => t.status !== 'DONE').length;
+            const completedTasks = user.assignedTasks.filter(t => t.status === 'DONE').length;
+            const { assignedTasks, _count, ...rest } = user;
+            return {
+                ...rest,
+                activeTasks,
+                completedTasks,
+            };
+        });
+
+        res.json(usersWithStats);
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
     }
@@ -196,14 +218,23 @@ export const inviteUser = async (req: any, res: Response) => {
             return res.json({ message: 'User exists', existingUser });
         }
 
-        // Send real email via Resend
-        const result = await sendInviteEmail(email);
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const signupLink = `${frontendUrl}/signup`;
 
-        if (!result.success) {
-            return res.status(500).json({ message: 'Failed to send invitation email' });
+        // Try to send email, but don't fail if SendGrid isn't configured
+        if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_API_KEY !== 'SG.your_sendgrid_api_key_here') {
+            const result = await sendInviteEmail(email);
+            if (result.success) {
+                return res.json({ message: 'Invitation sent', signupLink });
+            }
         }
 
-        res.json({ message: 'Invitation sent' });
+        // If email sending fails or isn't configured, still return success with the link
+        res.json({
+            message: 'Invitation created',
+            signupLink,
+            note: 'Email delivery is not configured. Share this signup link manually.'
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });

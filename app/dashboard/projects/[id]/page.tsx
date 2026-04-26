@@ -8,16 +8,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
+import { Badge } from "@/components/ui/badge"
 import { getInitials } from "@/lib/utils"
 import { CreateTaskDialog } from "@/components/tasks/create-task-dialog"
-import { AddMemberDialog } from "@/components/projects/add-member-dialog"
-import { Loader2, Calendar, MoreHorizontal, ArrowLeft, UserPlus } from "lucide-react"
+import { InviteMemberDialog } from "@/components/projects/invite-member-dialog"
+import { Loader2, Calendar, ArrowLeft, UserPlus, Users, Clock } from "lucide-react"
 
 interface Project {
     id: string
     name: string
     description: string
     createdAt: string
+    ownerId: string
     loading?: boolean
     owner: {
         firstName: string
@@ -92,11 +94,15 @@ export default function ProjectDetailsPage() {
                         <p className="text-muted-foreground mt-1">{project.description}</p>
                     </div>
                     <div className="flex items-center gap-3">
+                        <InviteMemberDialog
+                            projectId={project.id}
+                            projectName={project.name}
+                            onMemberAdded={fetchProject}
+                        />
                         <CreateTaskDialog
                             defaultProjectId={project.id}
                             onTaskCreated={fetchProject}
                         />
-                        <Button variant="outline">Settings</Button>
                     </div>
                 </div>
 
@@ -112,6 +118,10 @@ export default function ProjectDetailsPage() {
                     <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
                         <span>Created {new Date(project.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        <span>{project.members?.length || 0} members</span>
                     </div>
                 </div>
             </div>
@@ -133,7 +143,19 @@ export default function ProjectDetailsPage() {
 
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Team Members</CardTitle>
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm font-medium">Team Members</CardTitle>
+                            <InviteMemberDialog
+                                projectId={project.id}
+                                projectName={project.name}
+                                onMemberAdded={fetchProject}
+                                trigger={
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full">
+                                        <UserPlus className="h-4 w-4" />
+                                    </Button>
+                                }
+                            />
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <div className="flex -space-x-2 overflow-hidden">
@@ -143,9 +165,6 @@ export default function ProjectDetailsPage() {
                                     <AvatarFallback>{getInitials(member.user.firstName, member.user.lastName)}</AvatarFallback>
                                 </Avatar>
                             ))}
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border-2 border-dashed border-muted-foreground/30 ml-2">
-                                <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-                            </Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -156,11 +175,10 @@ export default function ProjectDetailsPage() {
                 <TabsList>
                     <TabsTrigger value="tasks">Tasks</TabsTrigger>
                     <TabsTrigger value="kanban">Board</TabsTrigger>
-                    <TabsTrigger value="files">Files</TabsTrigger>
+                    <TabsTrigger value="members">Members</TabsTrigger>
                 </TabsList>
                 <TabsContent value="tasks" className="mt-6">
                     <div className="rounded-md border">
-                        {/* Simple Task List for now */}
                         <div className="p-4 space-y-4">
                             {project.tasks.length === 0 ? (
                                 <p className="text-center text-muted-foreground py-8">No tasks yet.</p>
@@ -188,6 +206,55 @@ export default function ProjectDetailsPage() {
                 <TabsContent value="kanban">
                     <div className="h-[400px] flex items-center justify-center border rounded-md bg-muted/20 text-muted-foreground">
                         Kanban Board View (Coming Soon)
+                    </div>
+                </TabsContent>
+                <TabsContent value="members" className="mt-6">
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {project.members && project.members.map((member: any) => (
+                            <Card key={member.id} className="overflow-hidden">
+                                <CardContent className="p-4">
+                                    <div className="flex items-center gap-3">
+                                        <Avatar className="h-10 w-10">
+                                            <AvatarImage src={member.user.avatar} />
+                                            <AvatarFallback className="bg-primary/10 text-primary">
+                                                {getInitials(member.user.firstName, member.user.lastName)}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-medium truncate">
+                                                {member.user.firstName} {member.user.lastName}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground truncate">{member.user.email}</p>
+                                        </div>
+                                        {member.userId === project.ownerId && (
+                                            <Badge variant="secondary" className="text-xs shrink-0">Owner</Badge>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+
+                        {/* Invite card */}
+                        <InviteMemberDialog
+                            projectId={project.id}
+                            projectName={project.name}
+                            onMemberAdded={fetchProject}
+                            trigger={
+                                <Card className="overflow-hidden border-dashed cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors">
+                                    <CardContent className="p-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                                                <UserPlus className="h-4 w-4 text-muted-foreground" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-muted-foreground">Invite Member</p>
+                                                <p className="text-xs text-muted-foreground">Add someone by email</p>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            }
+                        />
                     </div>
                 </TabsContent>
             </Tabs>

@@ -128,14 +128,14 @@ export default function TeamPage() {
                   </Badge>
                 </div>
 
-                {/* Mock Stats for now */}
+                {/* Real Stats */}
                 <div className="grid grid-cols-2 gap-4 pt-2 border-t text-center">
                   <div>
-                    <p className="text-xl font-bold">{Math.floor(Math.random() * 10)}</p>
+                    <p className="text-xl font-bold">{member.activeTasks ?? 0}</p>
                     <p className="text-xs text-muted-foreground">Active Tasks</p>
                   </div>
                   <div>
-                    <p className="text-xl font-bold">{Math.floor(Math.random() * 20) + 5}</p>
+                    <p className="text-xl font-bold">{member.completedTasks ?? 0}</p>
                     <p className="text-xs text-muted-foreground">Completed</p>
                   </div>
                 </div>

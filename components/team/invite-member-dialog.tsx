@@ -55,6 +55,12 @@ export function InviteMemberDialog({ trigger }: InviteMemberDialogProps) {
                 toast.info("User already exists", {
                     description: `${data.existingUser.firstName} ${data.existingUser.lastName} is already on FlowSync.`
                 })
+            } else if (data.note) {
+                // Email not configured – show the signup link for manual sharing
+                toast.success("Invitation Created", {
+                    description: `Share this signup link with them: ${data.signupLink}`,
+                    duration: 10000,
+                })
             } else {
                 toast.success("Invitation Sent", {
                     description: `We've sent an invite link to ${values.email}`

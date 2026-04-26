@@ -12,6 +12,7 @@ import { Plus, Search, Calendar, MoreHorizontal, Loader2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { api } from "@/lib/api-client"
 import { CreateTaskDialog } from "@/components/tasks/create-task-dialog"
+import { EditTaskDialog } from "@/components/tasks/edit-task-dialog"
 import { toast } from "sonner"
 
 export default function TasksPage() {
@@ -20,6 +21,7 @@ export default function TasksPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [selectedTasks, setSelectedTasks] = useState<string[]>([])
+  const [editingTask, setEditingTask] = useState<any | null>(null)
 
   const fetchTasks = async () => {
     try {
@@ -204,7 +206,7 @@ export default function TasksPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Edit</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setEditingTask(task)}>Edit</DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTask(task.id)}>Delete</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -215,6 +217,14 @@ export default function TasksPage() {
           </Table>
         )}
       </div>
+
+      {/* Edit Task Dialog */}
+      <EditTaskDialog
+        open={!!editingTask}
+        onOpenChange={(open) => !open && setEditingTask(null)}
+        task={editingTask}
+        onTaskUpdated={fetchTasks}
+      />
     </div>
   )
 }

@@ -26,9 +26,6 @@ export default function SettingsPage() {
     firstName: "",
     lastName: "",
     email: "",
-    bio: "", // Note: Backend doesn't seem to store bio yet, but UI has it. We'll ignore for now or add to schema.
-    // Actually schema in users.controller.ts only has firstName, lastName, email, avatar.
-    // I will skip bio submission for now or assume it's ignored.
   })
 
   // Password Form State
@@ -54,7 +51,6 @@ export default function SettingsPage() {
         firstName: user.firstName || "",
         lastName: user.lastName || "",
         email: user.email || "",
-        bio: "", // Placeholder
       })
       // Fetch current preferences if available
       const fetchPreferences = async () => {
@@ -174,6 +170,7 @@ export default function SettingsPage() {
                     size="icon"
                     variant="secondary"
                     className="absolute bottom-0 right-0 h-8 w-8 rounded-full shadow-md"
+                    onClick={() => toast.info("Avatar upload coming soon!")}
                   >
                     <Camera className="h-4 w-4" />
                   </Button>
@@ -211,19 +208,6 @@ export default function SettingsPage() {
                     disabled
                     className="bg-muted"
                   />
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="bio">Bio</Label>
-                  <Textarea
-                    id="bio"
-                    placeholder="Tell us about yourself..."
-                    className="min-h-[100px]"
-                    value={profileData.bio}
-                    onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    * Bio is currently not stored in backend database
-                  </p>
                 </div>
               </div>
 
@@ -314,6 +298,50 @@ export default function SettingsPage() {
                   />
                 </div>
               </div>
+
+                <div className="space-y-4 pt-4 border-t">
+                  <h4 className="text-sm font-medium text-muted-foreground">Notify me about</h4>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">Task Assignments</p>
+                      <p className="text-sm text-muted-foreground">When a task is assigned to you</p>
+                    </div>
+                    <Switch
+                      checked={notifications.taskAssigned}
+                      onCheckedChange={(checked) => setNotifications((n) => ({ ...n, taskAssigned: checked }))}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">Task Completions</p>
+                      <p className="text-sm text-muted-foreground">When a task you created is completed</p>
+                    </div>
+                    <Switch
+                      checked={notifications.taskCompleted}
+                      onCheckedChange={(checked) => setNotifications((n) => ({ ...n, taskCompleted: checked }))}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">Mentions</p>
+                      <p className="text-sm text-muted-foreground">When someone mentions you in a comment</p>
+                    </div>
+                    <Switch
+                      checked={notifications.mentions}
+                      onCheckedChange={(checked) => setNotifications((n) => ({ ...n, mentions: checked }))}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">Deadline Reminders</p>
+                      <p className="text-sm text-muted-foreground">When a task deadline is approaching</p>
+                    </div>
+                    <Switch
+                      checked={notifications.deadlines}
+                      onCheckedChange={(checked) => setNotifications((n) => ({ ...n, deadlines: checked }))}
+                    />
+                  </div>
+                </div>
 
               <div className="flex justify-end">
                 <Button className="btn-3d" onClick={handlePreferencesUpdate} disabled={isLoading}>

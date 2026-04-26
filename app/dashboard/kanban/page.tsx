@@ -2,9 +2,13 @@
 
 import { Button } from "@/components/ui/button"
 import { KanbanBoard } from "@/components/kanban/kanban-board"
+import { CreateTaskDialog } from "@/components/tasks/create-task-dialog"
+import { useKanbanStore } from "@/lib/kanban-store"
 import { Plus, Filter, Users } from "lucide-react"
 
 export default function KanbanPage() {
+  const { fetchTasks } = useKanbanStore()
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -22,10 +26,15 @@ export default function KanbanPage() {
             <Users className="mr-2 h-4 w-4" />
             Team
           </Button>
-          <Button size="sm" className="btn-3d">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Task
-          </Button>
+          <CreateTaskDialog
+            onTaskCreated={() => fetchTasks()}
+            trigger={
+              <Button size="sm" className="btn-3d">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Task
+              </Button>
+            }
+          />
         </div>
       </div>
 

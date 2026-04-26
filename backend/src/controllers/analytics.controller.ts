@@ -4,14 +4,17 @@ import prisma from '../config/database';
 export const getTaskCompletionTrend = async (req: any, res: Response) => {
     try {
         const userId = req.user.id;
+        const periodParam = (req.query.period as string) || '30d';
+        const periodDays = periodParam === '7d' ? 7 : periodParam === '90d' ? 90 : 42;
+        const weeksCount = Math.max(1, Math.ceil(periodDays / 7));
 
-        // Get tasks from the last 6 weeks
-        const sixWeeksAgo = new Date();
-        sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42);
+        // Get tasks from the specified period
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - periodDays);
 
         const tasks = await prisma.task.findMany({
             where: {
-                createdAt: { gte: sixWeeksAgo },
+                createdAt: { gte: startDate },
                 OR: [
                     { assigneeId: userId },
                     { project: { members: { some: { userId } } } }
@@ -27,13 +30,13 @@ export const getTaskCompletionTrend = async (req: any, res: Response) => {
         // Group tasks by week
         const weekData: Record<string, { completed: number; created: number }> = {};
 
-        for (let i = 5; i >= 0; i--) {
+        for (let i = weeksCount - 1; i >= 0; i--) {
             const weekStart = new Date();
             weekStart.setDate(weekStart.getDate() - (i * 7) - 6);
             const weekEnd = new Date();
             weekEnd.setDate(weekEnd.getDate() - (i * 7));
 
-            const weekLabel = `Week ${6 - i}`;
+            const weekLabel = `Week ${weeksCount - i}`;
             weekData[weekLabel] = { completed: 0, created: 0 };
 
             tasks.forEach(task => {
@@ -190,6 +193,94 @@ export const getTeamWorkload = async (req: any, res: Response) => {
 
         res.json(data);
     } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+export const getDashboardStats = async (req: any, res: Response) => {
+    try {
+        const userId = req.user.id;
+        const isAdmin = req.user.role === 'ADMIN';
+
+        const now = new Date();
+        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+        const memberFilter = isAdmin
+            ? { deletedAt: null }
+            : {
+                  deletedAt: null,
+                  OR: [
+                      { ownerId: userId },
+                      { members: { some: { userId } } },
+                  ],
+              };
+
+        // Current projects count
+        const currentProjects = await prisma.project.count({ where: memberFilter });
+
+        // Projects created in last week
+        const newProjectsThisWeek = await prisma.project.count({
+            where: { ...memberFilter, createdAt: { gte: oneWeekAgo } },
+        });
+        const newProjectsLastWeek = await prisma.project.count({
+            where: { ...memberFilter, createdAt: { gte: twoWeeksAgo, lt: oneWeekAgo } },
+        });
+
+        // Task filters
+        const taskMemberFilter = isAdmin
+            ? { deletedAt: null as null }
+            : {
+                  deletedAt: null as null,
+                  OR: [
+                      { assigneeId: userId },
+                      { project: { members: { some: { userId } } } },
+                  ],
+              };
+
+        const allTasks = await prisma.task.findMany({
+            where: taskMemberFilter,
+            select: { status: true, createdAt: true, updatedAt: true },
+        });
+
+        const totalTasks = allTasks.length;
+        const completedTasks = allTasks.filter((t) => t.status === 'DONE').length;
+        const pendingTasks = totalTasks - completedTasks;
+
+        // Tasks created this week vs last week
+        const tasksCreatedThisWeek = allTasks.filter((t) => new Date(t.createdAt) >= oneWeekAgo).length;
+        const tasksCreatedLastWeek = allTasks.filter(
+            (t) => new Date(t.createdAt) >= twoWeeksAgo && new Date(t.createdAt) < oneWeekAgo
+        ).length;
+
+        // Tasks completed this week vs last week
+        const tasksCompletedThisWeek = allTasks.filter(
+            (t) => t.status === 'DONE' && new Date(t.updatedAt) >= oneWeekAgo
+        ).length;
+        const tasksCompletedLastWeek = allTasks.filter(
+            (t) => t.status === 'DONE' && new Date(t.updatedAt) >= twoWeeksAgo && new Date(t.updatedAt) < oneWeekAgo
+        ).length;
+
+        const calcChange = (current: number, previous: number) => {
+            if (previous === 0) return current > 0 ? 100 : 0;
+            return Math.round(((current - previous) / previous) * 100);
+        };
+
+        res.json({
+            projects: currentProjects,
+            projectsChange: calcChange(newProjectsThisWeek, newProjectsLastWeek),
+            tasks: totalTasks,
+            tasksChange: calcChange(tasksCreatedThisWeek, tasksCreatedLastWeek),
+            completed: completedTasks,
+            completedChange: calcChange(tasksCompletedThisWeek, tasksCompletedLastWeek),
+            pending: pendingTasks,
+            pendingChange: calcChange(
+                tasksCreatedThisWeek - tasksCompletedThisWeek,
+                tasksCreatedLastWeek - tasksCompletedLastWeek
+            ),
+        });
+    } catch (error) {
+        console.error(error);
         res.status(500).json({ message: 'Server error' });
     }
 };

@@ -5,6 +5,7 @@ import type { Task } from "@/lib/kanban-store"
 import { useKanbanStore } from "@/lib/kanban-store"
 import { KanbanColumn } from "./kanban-column"
 import { TaskDetailModal } from "./task-detail-modal"
+import { CreateTaskDialog } from "@/components/tasks/create-task-dialog"
 import {
   DndContext,
   DragOverlay,
@@ -18,15 +19,25 @@ import {
 } from "@dnd-kit/core"
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable"
 import { KanbanCard } from "./kanban-card"
+import { Button } from "@/components/ui/button"
+import { Plus } from "lucide-react"
 
 interface KanbanBoardProps {
   projectId?: string
+}
+
+const columnStatusMap: Record<string, string> = {
+  "todo": "TODO",
+  "in-progress": "IN_PROGRESS",
+  "review": "REVIEW",
+  "done": "DONE",
 }
 
 export function KanbanBoard({ projectId }: KanbanBoardProps) {
   const { columns, moveTask, fetchTasks, isLoading } = useKanbanStore()
   const [selectedTask, setSelectedTask] = useState<{ task: Task; columnId: string } | null>(null)
   const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const [addToColumnId, setAddToColumnId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchTasks(projectId)
@@ -118,7 +129,7 @@ export function KanbanBoard({ projectId }: KanbanBoardProps) {
               key={column.id}
               column={column}
               onTaskClick={(task) => setSelectedTask({ task, columnId: column.id })}
-              onAddTask={() => console.log("Add task to", column.id)}
+              onAddTask={() => setAddToColumnId(column.id)}
             />
           ))}
         </div>
@@ -137,6 +148,19 @@ export function KanbanBoard({ projectId }: KanbanBoardProps) {
         task={selectedTask?.task || null}
         columnId={selectedTask?.columnId || ""}
       />
+
+      {/* Column-level Add Task Dialog */}
+      <CreateTaskDialog
+        open={!!addToColumnId}
+        onOpenChange={(open: boolean) => !open && setAddToColumnId(null)}
+        defaultStatus={addToColumnId ? columnStatusMap[addToColumnId] : undefined}
+        onTaskCreated={() => {
+          fetchTasks(projectId)
+          setAddToColumnId(null)
+        }}
+        trigger={<span />}
+      />
     </>
   )
 }
+

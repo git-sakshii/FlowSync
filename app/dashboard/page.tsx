@@ -1,43 +1,47 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { ActivityFeed } from "@/components/dashboard/activity-feed"
 import { QuickActions } from "@/components/dashboard/quick-actions"
 import { ProjectOverview } from "@/components/dashboard/project-overview"
 import { UpcomingTasks } from "@/components/dashboard/upcoming-tasks"
+import { InviteAcceptedDialog } from "@/components/projects/invite-accepted-dialog"
 import { FolderKanban, CheckSquare, CheckCircle, Clock } from "lucide-react"
 import { api } from "@/lib/api-client"
 import { useAuthStore } from "@/lib/auth-store"
 
 export default function DashboardPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useAuthStore()
+  const [showJoinedDialog, setShowJoinedDialog] = useState(false)
+  const [joinedProject, setJoinedProject] = useState({ id: "", name: "" })
   const [stats, setStats] = useState({
     projects: 0,
+    projectsChange: 0,
     tasks: 0,
+    tasksChange: 0,
     completed: 0,
-    pending: 0
+    completedChange: 0,
+    pending: 0,
+    pendingChange: 0,
   })
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data: projects } = await api.get("/projects")
-
-        const totalProjects = projects.length
-        let totalTasks = 0
-        let completedTasks = 0
-
-        projects.forEach((p: any) => {
-          totalTasks += p.taskCount || 0
-          completedTasks += p.completedTasks || 0
-        })
-
+        const { data } = await api.get("/analytics/dashboard")
         setStats({
-          projects: totalProjects,
-          tasks: totalTasks,
-          completed: completedTasks,
-          pending: totalTasks - completedTasks
+          projects: data.projects,
+          projectsChange: data.projectsChange,
+          tasks: data.tasks,
+          tasksChange: data.tasksChange,
+          completed: data.completed,
+          completedChange: data.completedChange,
+          pending: data.pending,
+          pendingChange: data.pendingChange,
         })
       } catch (error) {
         console.error("Failed to fetch dashboard stats", error)
@@ -46,6 +50,18 @@ export default function DashboardPage() {
 
     fetchData()
   }, [])
+
+  // Handle ?joined=... query param from invite flow
+  useEffect(() => {
+    const joinedId = searchParams.get("joined")
+    const projectName = searchParams.get("projectName")
+    if (joinedId) {
+      setJoinedProject({ id: joinedId, name: projectName || "the project" })
+      setShowJoinedDialog(true)
+      // Clean URL without reload
+      window.history.replaceState({}, "", "/dashboard")
+    }
+  }, [searchParams])
 
   return (
     <div className="space-y-6">
@@ -60,10 +76,10 @@ export default function DashboardPage() {
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Projects" value={stats.projects} change={0} icon={<FolderKanban className="h-6 w-6" />} />
-        <StatCard title="Total Tasks" value={stats.tasks} change={0} icon={<CheckSquare className="h-6 w-6" />} />
-        <StatCard title="Tasks Completed" value={stats.completed} change={0} icon={<CheckCircle className="h-6 w-6" />} />
-        <StatCard title="Tasks Pending" value={stats.pending} change={0} icon={<Clock className="h-6 w-6" />} />
+        <StatCard title="Total Projects" value={stats.projects} change={stats.projectsChange} icon={<FolderKanban className="h-6 w-6" />} />
+        <StatCard title="Total Tasks" value={stats.tasks} change={stats.tasksChange} icon={<CheckSquare className="h-6 w-6" />} />
+        <StatCard title="Tasks Completed" value={stats.completed} change={stats.completedChange} icon={<CheckCircle className="h-6 w-6" />} />
+        <StatCard title="Tasks Pending" value={stats.pending} change={stats.pendingChange} icon={<Clock className="h-6 w-6" />} />
       </div>
 
       {/* Main content */}
@@ -76,6 +92,18 @@ export default function DashboardPage() {
           <ActivityFeed />
         </div>
       </div>
+
+      {/* Invite accepted popup */}
+      <InviteAcceptedDialog
+        open={showJoinedDialog}
+        onOpenChange={setShowJoinedDialog}
+        projectId={joinedProject.id}
+        projectName={joinedProject.name}
+        onGoToProject={() => {
+          setShowJoinedDialog(false)
+          router.push(`/dashboard/projects/${joinedProject.id}`)
+        }}
+      />
     </div>
   )
 }
