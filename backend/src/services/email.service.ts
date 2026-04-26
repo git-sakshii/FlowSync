@@ -1,17 +1,22 @@
-import sgMail from '@sendgrid/mail';
+import { BrevoClient } from '@getbrevo/brevo';
 
-// Initialize SendGrid with API key
-sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
+// Initialize the Brevo client
+const brevo = new BrevoClient({
+    apiKey: process.env.BREVO_API_KEY || '',
+});
+
+const getSender = () => ({
+    name: 'FlowSync',
+    email: process.env.EMAIL_FROM || 'noreply@flowsync.app',
+});
 
 export const sendInviteEmail = async (email: string, firstName: string = 'Team Member') => {
     try {
-        const fromEmail = process.env.EMAIL_FROM || 'noreply@flowsync.app';
-
-        const msg = {
-            to: email,
-            from: fromEmail, // Must be a verified sender in SendGrid
+        await brevo.transactionalEmails.sendTransacEmail({
             subject: 'You have been invited to FlowSync',
-            html: `
+            sender: getSender(),
+            to: [{ email }],
+            htmlContent: `
                 <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2>Hello ${firstName},</h2>
                     <p>You have been invited to join a FlowSync team.</p>
@@ -21,27 +26,24 @@ export const sendInviteEmail = async (email: string, firstName: string = 'Team M
                     </a>
                 </div>
             `,
-            text: `Hello ${firstName}, You have been invited to join a FlowSync team. Visit ${process.env.FRONTEND_URL || 'http://localhost:3000'}/signup to get started.`
-        };
+            textContent: `Hello ${firstName}, You have been invited to join a FlowSync team. Visit ${process.env.FRONTEND_URL || 'http://localhost:3000'}/signup to get started.`
+        });
 
-        await sgMail.send(msg);
-        console.log('[SendGrid] Email sent to:', email);
+        console.log('[Brevo] Email sent to:', email);
         return { success: true };
     } catch (error: any) {
-        console.error('[SendGrid Error]', error?.response?.body || error);
+        console.error('[Brevo Error]', error?.body || error?.message || error);
         return { success: false, error };
     }
 };
 
 export const sendPasswordResetEmail = async (email: string, resetUrl: string) => {
     try {
-        const fromEmail = process.env.EMAIL_FROM || 'noreply@flowsync.app';
-
-        const msg = {
-            to: email,
-            from: fromEmail,
+        await brevo.transactionalEmails.sendTransacEmail({
             subject: 'Reset your FlowSync password',
-            html: `
+            sender: getSender(),
+            to: [{ email }],
+            htmlContent: `
                 <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2>Password Reset Request</h2>
                     <p>We received a request to reset your password. Click the button below to create a new password.</p>
@@ -51,14 +53,13 @@ export const sendPasswordResetEmail = async (email: string, resetUrl: string) =>
                     <p style="margin-top: 24px; color: #666; font-size: 14px;">This link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.</p>
                 </div>
             `,
-            text: `Password Reset Request: Visit ${resetUrl} to reset your password. This link expires in 1 hour.`
-        };
+            textContent: `Password Reset Request: Visit ${resetUrl} to reset your password. This link expires in 1 hour.`
+        });
 
-        await sgMail.send(msg);
-        console.log('[SendGrid] Password reset email sent to:', email);
+        console.log('[Brevo] Password reset email sent to:', email);
         return { success: true };
     } catch (error: any) {
-        console.error('[SendGrid Error]', error?.response?.body || error);
+        console.error('[Brevo Error]', error?.body || error?.message || error);
         return { success: false, error };
     }
 };
@@ -70,15 +71,14 @@ export const sendProjectInviteEmail = async (
     inviteToken: string
 ) => {
     try {
-        const fromEmail = process.env.EMAIL_FROM || 'noreply@flowsync.app';
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
         const inviteUrl = `${frontendUrl}/invite/${inviteToken}`;
 
-        const msg = {
-            to: email,
-            from: fromEmail,
+        await brevo.transactionalEmails.sendTransacEmail({
             subject: `${inviterName} invited you to join "${projectName}" on FlowSync`,
-            html: `
+            sender: getSender(),
+            to: [{ email }],
+            htmlContent: `
                 <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
                     <div style="background: linear-gradient(135deg, #4F46E5, #7C3AED); padding: 40px 32px; border-radius: 12px 12px 0 0; text-align: center;">
                         <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700;">FlowSync</h1>
@@ -106,14 +106,13 @@ export const sendProjectInviteEmail = async (
                     </div>
                 </div>
             `,
-            text: `${inviterName} invited you to join "${projectName}" on FlowSync. Accept the invitation: ${inviteUrl}`
-        };
+            textContent: `${inviterName} invited you to join "${projectName}" on FlowSync. Accept the invitation: ${inviteUrl}`
+        });
 
-        await sgMail.send(msg);
-        console.log('[SendGrid] Project invite email sent to:', email);
+        console.log('[Brevo] Project invite email sent to:', email);
         return { success: true };
     } catch (error: any) {
-        console.error('[SendGrid Error]', error?.response?.body || error);
+        console.error('[Brevo Error]', error?.body || error?.message || error);
         return { success: false, error };
     }
 };
@@ -125,15 +124,14 @@ export const sendProjectAddedEmail = async (
     projectId: string
 ) => {
     try {
-        const fromEmail = process.env.EMAIL_FROM || 'noreply@flowsync.app';
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
         const projectUrl = `${frontendUrl}/dashboard/projects/${projectId}`;
 
-        const msg = {
-            to: email,
-            from: fromEmail,
+        await brevo.transactionalEmails.sendTransacEmail({
             subject: `You've been added to "${projectName}" on FlowSync`,
-            html: `
+            sender: getSender(),
+            to: [{ email }],
+            htmlContent: `
                 <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto;">
                     <div style="background: linear-gradient(135deg, #4F46E5, #7C3AED); padding: 40px 32px; border-radius: 12px 12px 0 0; text-align: center;">
                         <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700;">FlowSync</h1>
@@ -151,13 +149,13 @@ export const sendProjectAddedEmail = async (
                     </div>
                 </div>
             `,
-            text: `${adderName} added you to "${projectName}" on FlowSync. View the project: ${projectUrl}`
-        };
+            textContent: `${adderName} added you to "${projectName}" on FlowSync. View the project: ${projectUrl}`
+        });
 
-        await sgMail.send(msg);
+        console.log('[Brevo] Project added email sent to:', email);
         return { success: true };
     } catch (error: any) {
-        console.error('[SendGrid Error]', error?.response?.body || error);
+        console.error('[Brevo Error]', error?.body || error?.message || error);
         return { success: false, error };
     }
 };

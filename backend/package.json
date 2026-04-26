@@ -20,8 +20,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@getbrevo/brevo": "^5.0.4",
     "@prisma/client": "^6.1.0",
-    "@sendgrid/mail": "^8.1.6",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

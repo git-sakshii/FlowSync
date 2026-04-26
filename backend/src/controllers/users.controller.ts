@@ -221,8 +221,8 @@ export const inviteUser = async (req: any, res: Response) => {
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
         const signupLink = `${frontendUrl}/signup`;
 
-        // Try to send email, but don't fail if SendGrid isn't configured
-        if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_API_KEY !== 'SG.your_sendgrid_api_key_here') {
+        // Try to send email, but don't fail if Brevo isn't configured
+        if (process.env.BREVO_API_KEY) {
             const result = await sendInviteEmail(email);
             if (result.success) {
                 return res.json({ message: 'Invitation sent', signupLink });

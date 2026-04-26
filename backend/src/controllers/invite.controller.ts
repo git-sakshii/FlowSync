@@ -75,7 +75,7 @@ export const inviteToProject = async (req: any, res: Response) => {
             });
 
             // Try to send email notification
-            if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_API_KEY !== 'SG.your_sendgrid_api_key_here') {
+            if (process.env.BREVO_API_KEY) {
                 await sendProjectAddedEmail(email, inviterName, project.name, projectId);
             }
 
@@ -111,7 +111,7 @@ export const inviteToProject = async (req: any, res: Response) => {
         });
 
         // Try to send invite email
-        if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_API_KEY !== 'SG.your_sendgrid_api_key_here') {
+        if (process.env.BREVO_API_KEY) {
             await sendProjectInviteEmail(email, inviterName, project.name, token);
         }
 
